@@ -1,0 +1,60 @@
+// launch.json
+
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Build and Launch",
+            "preLaunchTask": "Build",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/x264",
+            "args": [
+                "--input-res", "176x144",
+                "--fps", "30",
+                "--frames", "300",
+                "--output", "${workspaceFolder}/resource/foreman_176x144_300.h264",
+                "${workspaceFolder}/resource/foreman_176x144_300.yuv"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Just Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/x264",
+            "args": [
+                "--input-res", "176x144",
+                "--fps", "30",
+                "--frames", "300",
+                "--output", "${workspaceFolder}/resource/foreman_176x144_300.h264",
+                "${workspaceFolder}/resource/foreman_176x144_300.yuv"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}
