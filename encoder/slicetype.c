@@ -898,6 +898,7 @@ static int slicetype_frame_cost( x264_t *h, x264_mb_analysis_t *a,
         else
 #endif
         {
+#if HAVE_THREAD
             if( h->param.i_lookahead_threads > 1 )
             {
                 x264_slicetype_slice_t s[X264_LOOKAHEAD_THREAD_MAX];
@@ -932,6 +933,7 @@ static int slicetype_frame_cost( x264_t *h, x264_mb_analysis_t *a,
                     x264_threadpool_wait( h->lookaheadpool, &s[i] );
             }
             else
+#endif
             {
                 h->i_threadslice_start = 0;
                 h->i_threadslice_end = h->mb.i_mb_height;
