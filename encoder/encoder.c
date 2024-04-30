@@ -26,6 +26,7 @@
  *****************************************************************************/
 
 #include "common/common.h"
+#include "common/log.h"
 
 #include "set.h"
 #include "analyse.h"
@@ -1511,6 +1512,8 @@ x264_t *x264_encoder_open( x264_param_t *param, void *api )
     int i_slicetype_length;
 
     CHECKED_MALLOCZERO( h, sizeof(x264_t) );
+
+    log_init();
 
     /* Create a copy of param */
     memcpy( &h->param, param, sizeof(x264_param_t) );
@@ -3442,6 +3445,9 @@ int     x264_encoder_encode( x264_t *h,
     }
 
     h->i_frame++;
+
+    log_debug("h->i_frame:%4d", h->i_frame);
+
     /* 3: The picture is analyzed in the lookahead */
     if( !h->frames.current[0] )
         x264_lookahead_get_frames( h );
@@ -4574,6 +4580,8 @@ void    x264_encoder_close  ( x264_t *h )
 #if HAVE_OPENCL
     x264_opencl_close_library( ocl );
 #endif
+
+    log_destroy();
 }
 
 int x264_encoder_delayed_frames( x264_t *h )

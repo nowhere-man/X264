@@ -1,0 +1,10 @@
+{
+    "log":
+    {
+        "log2file": true,
+        "logfile_path": "x264_log.log",
+        "logfile_level": "DEBUG",
+        "log2stdout": true,
+        "logstdout_level": "DEBUG"
+    }
+}

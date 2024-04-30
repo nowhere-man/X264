@@ -52,3 +52,4 @@ x264
 x264_config.h
 x264.pc
 *.h264
+*.log
