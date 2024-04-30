@@ -12,7 +12,24 @@
             "args": [
                 "--input-res", "176x144",
                 "--fps", "30",
+                // basic
                 "--frames", "300",
+                "--profile", "high",
+                "--tune", "ssim",
+                "--preset", "faster",
+                // structure
+                "--keyint", "30",
+                "--bframes", "3",
+                "--b-adapt", "0",
+                "--b-pyramid", "none",
+                "--ref", "3",
+                "--no-scenecut",
+                // rc
+                "--bitrate", "200",
+                "--vbv-maxrate", "300",
+                "--vbv-bufsize", "300",
+                "--rc-lookahead", "4",
+                // output
                 "--output", "${workspaceFolder}/resource/foreman_176x144_300.h264",
                 "${workspaceFolder}/resource/foreman_176x144_300.yuv"
             ],
@@ -38,7 +55,24 @@
             "args": [
                 "--input-res", "176x144",
                 "--fps", "30",
+                // basic
                 "--frames", "300",
+                "--profile", "high",
+                "--tune", "ssim",
+                "--preset", "faster",
+                // structure
+                "--keyint", "30",
+                "--bframes", "3",
+                "--b-adapt", "0",
+                "--b-pyramid", "none",
+                "--ref", "3",
+                "--no-scenecut",
+                // rc
+                "--bitrate", "200",
+                "--vbv-maxrate", "300",
+                "--vbv-bufsize", "300",
+                "--rc-lookahead", "4",
+                // output
                 "--output", "${workspaceFolder}/resource/foreman_176x144_300.h264",
                 "${workspaceFolder}/resource/foreman_176x144_300.yuv"
             ],
