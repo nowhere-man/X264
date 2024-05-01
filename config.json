@@ -3,8 +3,8 @@
     {
         "log2file": true,
         "logfile_path": "x264_log.log",
-        "logfile_level": "DEBUG",
-        "log2stdout": true,
+        "logfile_level": "TRACE",
+        "log2stdout": false,
         "logstdout_level": "DEBUG"
     }
 }

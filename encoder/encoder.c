@@ -26,7 +26,9 @@
  *****************************************************************************/
 
 #include "common/common.h"
+
 #include "common/log.h"
+#include "common/dfx_capture.h"
 
 #include "set.h"
 #include "analyse.h"
@@ -1855,6 +1857,7 @@ x264_t *x264_encoder_open( x264_param_t *param, void *api )
     x264_log( h, X264_LOG_INFO, "profile %s, level %s, %s, %d-bit\n",
               profile, level, subsampling[CHROMA_FORMAT], BIT_DEPTH );
 
+    dfx_x264_param(&h->param);
     return h;
 fail:
     x264_free( h );
@@ -3445,9 +3448,6 @@ int     x264_encoder_encode( x264_t *h,
     }
 
     h->i_frame++;
-
-    log_debug("h->i_frame:%4d", h->i_frame);
-
     /* 3: The picture is analyzed in the lookahead */
     if( !h->frames.current[0] )
         x264_lookahead_get_frames( h );
@@ -3458,6 +3458,8 @@ int     x264_encoder_encode( x264_t *h,
     /* ------------------- Get frame to be encoded ------------------------- */
     /* 4: get picture to encode */
     h->fenc = x264_frame_shift( h->frames.current );
+
+    log_trace("h->i_frame:%d, h->fenc:%p, h->fdec:%p", h->i_frame, h->fenc, h->fdec);
 
     /* If applicable, wait for previous frame reconstruction to finish */
     if( h->param.b_sliced_threads )
