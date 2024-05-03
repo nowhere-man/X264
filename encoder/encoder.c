@@ -2414,6 +2414,15 @@ static inline void reference_build_list( x264_t *h, int i_poc )
     assert( h->i_ref[0] + h->i_ref[1] <= X264_REF_MAX );
     h->mb.pic.i_fref[0] = h->i_ref[0];
     h->mb.pic.i_fref[1] = h->i_ref[1];
+
+    for (int i = 0; i < h->i_ref[0]; i++) {
+        log_trace("[build_ref_list]h->fref[0][%d]->i_frame=%d, h->fref[0][%d]->i_poc=%d",
+            h->fref[0][i]->i_frame, h->fref[0][i]->i_poc);
+    }
+    for (int i = 0; i < h->i_ref[1]; i++) {
+        log_trace("[build_ref_list]h->fref[1][%d]->i_frame=%d, h->fref[1][%d]->i_poc=%d",
+            h->fref[1][i]->i_frame, h->fref[1][i]->i_poc);
+    }
 }
 
 static void fdec_filter_row( x264_t *h, int mb_y, int pass )
@@ -2540,6 +2549,7 @@ static inline int reference_update( x264_t *h )
 {
     if( !h->fdec->b_kept_as_ref )
     {
+        log_trace("[ref_updte][h->fdec->b_kept_as_ref]h->fdec->i_frame:%d, h->fdec->i_codec:%d", h->fdec->i_frame, h->fdec->i_coded);
         if( h->i_thread_frames > 1 )
         {
             x264_frame_push_unused( h, h->fdec );
@@ -2553,14 +2563,20 @@ static inline int reference_update( x264_t *h )
     /* apply mmco from previous frame. */
     for( int i = 0; i < h->sh.i_mmco_command_count; i++ )
         for( int j = 0; h->frames.reference[j]; j++ )
-            if( h->frames.reference[j]->i_poc == h->sh.mmco[i].i_poc )
+            if( h->frames.reference[j]->i_poc == h->sh.mmco[i].i_poc ) {
+                log_trace("[ref_update]h->frames.reference[%d]->i_poc:%d", j, h->frames.reference[j]->i_poc);
                 x264_frame_push_unused( h, x264_frame_shift( &h->frames.reference[j] ) );
+            }
 
+    log_trace("[ref_updte][before move to ref]h->fdec->i_frame:%d, h->fdec->i_codec:%d",
+        h->fdec->i_frame, h->fdec->i_coded);
     /* move frame in the buffer */
     x264_frame_push( h->frames.reference, h->fdec );
     if( h->frames.reference[h->sps->i_num_ref_frames] )
         x264_frame_push_unused( h, x264_frame_shift( h->frames.reference ) );
     h->fdec = x264_frame_pop_unused( h, 1 );
+    log_trace("[ref_updte][after move to ref]h->fdec->i_frame:%d, h->fdec->i_codec:%d,h->fdec->b_kept_as_ref:%d",
+        h->fdec->i_frame, h->fdec->i_coded, h->fdec->b_kept_as_ref);
     if( !h->fdec )
         return -1;
     return 0;
@@ -2578,7 +2594,7 @@ static inline void reference_hierarchy_reset( x264_t *h )
 {
     int ref;
     int b_hasdelayframe = 0;
-
+    log_trace("[hierarchy_reset]h->sh.i_type:%d", h->sh.i_type);
     /* look for delay frames -- chain must only contain frames that are disposable */
     for( int i = 0; h->frames.current[i] && IS_DISPOSABLE( h->frames.current[i]->i_type ); i++ )
         b_hasdelayframe |= h->frames.current[i]->i_coded
@@ -2606,9 +2622,16 @@ static inline void reference_hierarchy_reset( x264_t *h )
         }
     }
 
+    for (int i = 0; i < h->sh.i_mmco_command_count; i++) {
+        log_trace("[hierarchy_reset]h->sh.mmco[%d].i_difference_of_pic_nums, h->sh.mmco[%d].i_poc",
+            h->sh.mmco[i].i_difference_of_pic_nums, h->sh.mmco[i].i_poc);
+    }
+
     /* Prepare room in the dpb for the delayed display time of the later b-frame's */
     if( h->param.i_bframe_pyramid )
         h->sh.i_mmco_remove_from_end = X264_MAX( ref + 2 - h->frames.i_max_dpb, 0 );
+
+    log_trace("[hierarchy_reset]h->sh.i_mmco_remove_from_end:%d", h->sh.i_mmco_remove_from_end);
 }
 
 static inline void slice_init( x264_t *h, int i_nal_type, int i_global_qp )
@@ -3459,7 +3482,7 @@ int     x264_encoder_encode( x264_t *h,
     /* 4: get picture to encode */
     h->fenc = x264_frame_shift( h->frames.current );
 
-    log_trace("h->i_frame:%d, h->fenc:%p, h->fdec:%p", h->i_frame, h->fenc, h->fdec);
+    log_trace("[encoder_encode]h->i_frame:%d", h->i_frame);
 
     /* If applicable, wait for previous frame reconstruction to finish */
     if( h->param.b_sliced_threads )
