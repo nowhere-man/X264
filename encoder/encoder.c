@@ -29,6 +29,7 @@
 
 #include "common/log.h"
 #include "common/dfx_capture.h"
+#include "common/timer.h"
 
 #include "set.h"
 #include "analyse.h"
@@ -1516,6 +1517,7 @@ x264_t *x264_encoder_open( x264_param_t *param, void *api )
     CHECKED_MALLOCZERO( h, sizeof(x264_t) );
 
     log_init();
+    timer_start(&h->timer.encoder_open);
 
     /* Create a copy of param */
     memcpy( &h->param, param, sizeof(x264_param_t) );
@@ -1857,6 +1859,7 @@ x264_t *x264_encoder_open( x264_param_t *param, void *api )
     x264_log( h, X264_LOG_INFO, "profile %s, level %s, %s, %d-bit\n",
               profile, level, subsampling[CHROMA_FORMAT], BIT_DEPTH );
 
+    timer_end(&h->timer.encoder_open);
     dfx_x264_param(&h->param);
     return h;
 fail:
@@ -3384,6 +3387,8 @@ int     x264_encoder_encode( x264_t *h,
     *pi_nal = 0;
     *pp_nal = NULL;
 
+    timer_start(&h->timer.encoder_encode.total);
+
     /* ------------------- Setup new frame from picture -------------------- */
     if( pic_in != NULL )
     {
@@ -4207,6 +4212,7 @@ static int encoder_frame_end( x264_t *h, x264_t *thread_current,
         frame_dump( h );
     x264_emms();
 
+    timer_end(&h->timer.encoder_encode.total);
     return frame_size;
 }
 
@@ -4226,6 +4232,7 @@ static void print_intra( int64_t *i_mb_count, double i_count, int b_print_pcm, c
  ****************************************************************************/
 void    x264_encoder_close  ( x264_t *h )
 {
+    timer_start(&h->timer.encoder_close);
     int64_t i_yuv_size = FRAME_SIZE( h->param.i_width * h->param.i_height );
     int64_t i_mb_count_size[2][7] = {{0}};
     char buf[200];
@@ -4605,6 +4612,8 @@ void    x264_encoder_close  ( x264_t *h )
 #if HAVE_OPENCL
     x264_opencl_close_library( ocl );
 #endif
+    timer_end(&h->timer.encoder_close);
+    log_time(&h->timer);
 
     log_destroy();
 }

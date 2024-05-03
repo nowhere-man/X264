@@ -28,6 +28,7 @@
 #define X264_COMMON_H
 
 #include "base.h"
+#include "timer.h"
 
 /* Macros for templating function calls according to bit depth */
 #define x264_template(w) x264_glue3(x264, BIT_DEPTH, w)
@@ -760,6 +761,8 @@ struct x264_t
 #if HAVE_OPENCL
     x264_opencl_t opencl;
 #endif
+
+    x264_time_t timer;
 };
 
 typedef struct

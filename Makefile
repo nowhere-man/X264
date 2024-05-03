@@ -29,7 +29,7 @@ SRCS_X = common/mc.c common/predict.c common/pixel.c common/macroblock.c \
          encoder/set.c encoder/macroblock.c encoder/cabac.c \
          encoder/cavlc.c encoder/encoder.c encoder/lookahead.c
 
-SRCS_X += common/cJSON.c common/log.c common/dfx_capture.c
+SRCS_X += common/cJSON.c common/log.c common/dfx_capture.c common/timer.c
 
 SRCS_8 =
 
