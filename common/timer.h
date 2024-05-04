@@ -18,7 +18,12 @@ typedef struct {
         x264_clock_t ratecontrol;
         struct {
             x264_clock_t total;
-            x264_clock_t i;
+            struct {
+                x264_clock_t total;
+                x264_clock_t pred;
+                x264_clock_t rd;
+                x264_clock_t rd_refine;
+            } i;
             x264_clock_t p;
             x264_clock_t b;
         } mb_analyse;

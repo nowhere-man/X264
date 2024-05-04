@@ -19,18 +19,17 @@ void log_time(x264_time_t* time)
     log_info("Total time : %.2f ms", total_time);
     log_info("Encoder open time: %.2f ms", time->encoder_open.duration);
     log_info("Encoder encode time: %.2f ms", time->encoder_encode.total.duration);
-    log_info("Encoder close time: %.2f ms", time->encoder_close.duration);
-
-    log_info("Details for encoder encode:");
     log_info("  Adaptive quant time: %.2f ms", time->encoder_encode.aq.duration);
     log_info("  Lowres init time: %.2f ms", time->encoder_encode.lower_res_init.duration);
     log_info("  Lookahead time: %.2f ms", time->encoder_encode.lookahead.duration);
     log_info("  Ratecontrol time: %.2f ms", time->encoder_encode.ratecontrol.duration);
     log_info("  Mb analysis time: %.2f ms", time->encoder_encode.mb_analyse.total.duration);
+    log_info("    I frame analysis time: %.2f ms", time->encoder_encode.mb_analyse.i.total.duration);
+    log_info("      Prediction time: %.2f ms", time->encoder_encode.mb_analyse.i.pred.duration);
+    log_info("      Rd time: %.2f ms", time->encoder_encode.mb_analyse.i.rd.duration);
+    log_info("      Rd refine time: %.2f ms", time->encoder_encode.mb_analyse.i.rd_refine.duration);
+    log_info("    P frame analysis time: %.2f ms", time->encoder_encode.mb_analyse.p.duration);
+    log_info("    B frame analysis time: %.2f ms", time->encoder_encode.mb_analyse.b.duration);
     log_info("  Mb encode time: %.2f ms", time->encoder_encode.mb_encode.duration);
-
-    log_info("Details for mb analysis:");
-    log_info("  I frame analysis time: %.2f ms", time->encoder_encode.mb_analyse.i.duration);
-    log_info("  P frame analysis time: %.2f ms", time->encoder_encode.mb_analyse.p.duration);
-    log_info("  B frame analysis time: %.2f ms", time->encoder_encode.mb_analyse.b.duration);
+    log_info("Encoder close time: %.2f ms", time->encoder_close.duration);
 }

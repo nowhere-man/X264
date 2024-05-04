@@ -2936,13 +2936,20 @@ void x264_macroblock_analyse( x264_t *h )
     if( h->sh.i_type == SLICE_TYPE_I )
     {
 intra_analysis:
-        timer_start(&h->timer.encoder_encode.mb_analyse.i);
+        timer_start(&h->timer.encoder_encode.mb_analyse.i.total);
 
         if( analysis.i_mbrd )
             mb_init_fenc_cache( h, analysis.i_mbrd >= 2 );
+
+        timer_start(&h->timer.encoder_encode.mb_analyse.i.pred);
         mb_analyse_intra( h, &analysis, COST_MAX );
-        if( analysis.i_mbrd )
+        timer_end(&h->timer.encoder_encode.mb_analyse.i.pred);
+
+        if( analysis.i_mbrd ) {
+            timer_start(&h->timer.encoder_encode.mb_analyse.i.rd);
             intra_rd( h, &analysis, COST_MAX );
+            timer_end(&h->timer.encoder_encode.mb_analyse.i.rd);
+        }
 
         i_cost = analysis.i_satd_i16x16;
         h->mb.i_type = I_16x16;
@@ -2951,10 +2958,13 @@ intra_analysis:
         if( analysis.i_satd_pcm < i_cost )
             h->mb.i_type = I_PCM;
 
-        else if( analysis.i_mbrd >= 2 )
+        else if( analysis.i_mbrd >= 2 ) {
+            timer_start(&h->timer.encoder_encode.mb_analyse.i.rd_refine);
             intra_rd_refine( h, &analysis );
+            timer_end(&h->timer.encoder_encode.mb_analyse.i.rd_refine);
+        }
 
-        timer_end(&h->timer.encoder_encode.mb_analyse.i);
+        timer_end(&h->timer.encoder_encode.mb_analyse.i.total);
     }
     else if( h->sh.i_type == SLICE_TYPE_P )
     {
