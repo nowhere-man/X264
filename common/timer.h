@@ -16,7 +16,12 @@ typedef struct {
         x264_clock_t lower_res_init;
         x264_clock_t lookahead;
         x264_clock_t ratecontrol;
-        x264_clock_t mb_analyse;
+        struct {
+            x264_clock_t total;
+            x264_clock_t i;
+            x264_clock_t p;
+            x264_clock_t b;
+        } mb_analyse;
         x264_clock_t mb_encode;
     } encoder_encode;
     x264_clock_t encoder_close;

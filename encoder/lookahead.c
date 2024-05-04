@@ -222,6 +222,8 @@ static void lookahead_encoder_shift( x264_t *h )
 
 void x264_lookahead_get_frames( x264_t *h )
 {
+    timer_start(&h->timer.encoder_encode.lookahead);
+
     if( h->param.i_sync_lookahead )
     {   /* We have a lookahead thread, so get frames from there */
         x264_pthread_mutex_lock( &h->lookahead->ofbuf.mutex );
@@ -247,4 +249,6 @@ void x264_lookahead_get_frames( x264_t *h )
 
         lookahead_encoder_shift( h );
     }
+
+    timer_end(&h->timer.encoder_encode.lookahead);
 }

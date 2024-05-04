@@ -2917,6 +2917,8 @@ static inline void mb_analyse_qp_rd( x264_t *h, x264_mb_analysis_t *a )
  *****************************************************************************/
 void x264_macroblock_analyse( x264_t *h )
 {
+    timer_start(&h->timer.encoder_encode.mb_analyse.total);
+
     x264_mb_analysis_t analysis;
     int i_cost = COST_MAX;
 
@@ -2934,6 +2936,8 @@ void x264_macroblock_analyse( x264_t *h )
     if( h->sh.i_type == SLICE_TYPE_I )
     {
 intra_analysis:
+        timer_start(&h->timer.encoder_encode.mb_analyse.i);
+
         if( analysis.i_mbrd )
             mb_init_fenc_cache( h, analysis.i_mbrd >= 2 );
         mb_analyse_intra( h, &analysis, COST_MAX );
@@ -2949,9 +2953,13 @@ intra_analysis:
 
         else if( analysis.i_mbrd >= 2 )
             intra_rd_refine( h, &analysis );
+
+        timer_end(&h->timer.encoder_encode.mb_analyse.i);
     }
     else if( h->sh.i_type == SLICE_TYPE_P )
     {
+        timer_start(&h->timer.encoder_encode.mb_analyse.p);
+
         int b_skip = 0;
 
         h->mc.prefetch_ref( h->mb.pic.p_fref[0][0][h->mb.i_mb_x&3], h->mb.pic.i_stride[0], 0 );
@@ -3301,9 +3309,12 @@ skip_analysis:
                 }
             }
         }
+        timer_end(&h->timer.encoder_encode.mb_analyse.p);
     }
     else if( h->sh.i_type == SLICE_TYPE_B )
     {
+        timer_start(&h->timer.encoder_encode.mb_analyse.b);
+
         int i_bskip_cost = COST_MAX;
         int b_skip = 0;
 
@@ -3698,6 +3709,7 @@ skip_analysis:
                 }
             }
         }
+        timer_end(&h->timer.encoder_encode.mb_analyse.b);
     }
 
     analyse_update_cache( h, &analysis );
@@ -3728,6 +3740,8 @@ skip_analysis:
         psy_trellis_init( h, 0 );
     if( h->mb.b_trellis == 1 || h->mb.b_noise_reduction )
         h->mb.i_skip_intra = 0;
+
+    timer_end(&h->timer.encoder_encode.mb_analyse.total);
 }
 
 /*-------------------- Update MB from the analysis ----------------------*/

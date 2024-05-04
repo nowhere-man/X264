@@ -457,6 +457,8 @@ static void integral_init8v( uint16_t *sum8, intptr_t stride )
 
 void x264_frame_init_lowres( x264_t *h, x264_frame_t *frame )
 {
+    timer_start(&h->timer.encoder_encode.lower_res_init);
+
     pixel *src = frame->plane[0];
     int i_stride = frame->i_stride[0];
     int i_height = frame->i_lines[0];
@@ -479,6 +481,8 @@ void x264_frame_init_lowres( x264_t *h, x264_frame_t *frame )
     for( int y = 0; y <= !!h->param.i_bframe; y++ )
         for( int x = 0; x <= h->param.i_bframe; x++ )
             frame->lowres_mvs[y][x][0][0] = 0x7FFF;
+
+    timer_end(&h->timer.encoder_encode.lower_res_init);
 }
 
 static void frame_init_lowres_core( pixel *src0, pixel *dst0, pixel *dsth, pixel *dstv, pixel *dstc,

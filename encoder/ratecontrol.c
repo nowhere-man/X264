@@ -303,6 +303,8 @@ static NOINLINE uint32_t ac_energy_mb( x264_t *h, int mb_x, int mb_y, x264_frame
 
 void x264_adaptive_quant_frame( x264_t *h, x264_frame_t *frame, float *quant_offsets )
 {
+    timer_start(&h->timer.encoder_encode.aq);
+
     /* Initialize frame stats */
     for( int i = 0; i < 3; i++ )
     {
@@ -412,6 +414,8 @@ void x264_adaptive_quant_frame( x264_t *h, x264_frame_t *frame, float *quant_off
         int height = 16*h->mb.i_mb_height >> (i && CHROMA_V_SHIFT);
         frame->i_pixel_ssd[i] = ssd - (sum * sum + width * height / 2) / (width * height);
     }
+
+    timer_end(&h->timer.encoder_encode.aq);
 }
 
 static int macroblock_tree_rescale_init( x264_t *h, x264_ratecontrol_t *rc )
@@ -1431,6 +1435,8 @@ void x264_ratecontrol_zone_init( x264_t *h )
 /* Before encoding a frame, choose a QP for it */
 void x264_ratecontrol_start( x264_t *h, int i_force_qp, int overhead )
 {
+    timer_start(&h->timer.encoder_encode.ratecontrol);
+
     x264_ratecontrol_t *rc = h->rc;
     ratecontrol_entry_t *rce = NULL;
     x264_zone_t *zone = get_zone( h, h->fenc->i_frame );
@@ -1535,6 +1541,8 @@ void x264_ratecontrol_start( x264_t *h, int i_force_qp, int overhead )
 
     if( h->sh.i_type != SLICE_TYPE_B )
         rc->last_non_b_pict_type = h->sh.i_type;
+
+    timer_end(&h->timer.encoder_encode.ratecontrol);
 }
 
 static float predict_row_size( x264_t *h, int y, float qscale )
