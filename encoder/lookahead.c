@@ -235,8 +235,10 @@ void x264_lookahead_get_frames( x264_t *h )
     else
     {   /* We are not running a lookahead thread, so perform all the slicetype decide on the fly */
 
-        if( h->frames.current[0] || !h->lookahead->next.i_size )
+        if( h->frames.current[0] || !h->lookahead->next.i_size ) {
+            timer_end(&h->timer.encoder_encode.lookahead);
             return;
+        }
 
         x264_slicetype_decide( h );
         lookahead_update_last_nonb( h, h->lookahead->next.list[0] );

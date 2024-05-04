@@ -4233,6 +4233,7 @@ static void print_intra( int64_t *i_mb_count, double i_count, int b_print_pcm, c
 void    x264_encoder_close  ( x264_t *h )
 {
     timer_start(&h->timer.encoder_close);
+
     int64_t i_yuv_size = FRAME_SIZE( h->param.i_width * h->param.i_height );
     int64_t i_mb_count_size[2][7] = {{0}};
     char buf[200];
@@ -4612,6 +4613,7 @@ void    x264_encoder_close  ( x264_t *h )
 #if HAVE_OPENCL
     x264_opencl_close_library( ocl );
 #endif
+
     timer_end(&h->timer.encoder_close);
     log_time(&h->timer);
 

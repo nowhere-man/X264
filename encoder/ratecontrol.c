@@ -342,8 +342,10 @@ void x264_adaptive_quant_frame( x264_t *h, x264_frame_t *frame, float *quant_off
                 for( int mb_x = 0; mb_x < h->mb.i_mb_width; mb_x++ )
                     ac_energy_mb( h, mb_x, mb_y, frame );
         }
-        else
+        else {
+            timer_end(&h->timer.encoder_encode.aq);
             return;
+        }
     }
     /* Actual adaptive quantization */
     else

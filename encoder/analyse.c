@@ -3049,6 +3049,9 @@ skip_analysis:
             {
                 for( int i = 1; i < h->mb.pic.i_fref[0]; i++ )
                     M32( h->mb.mvr[0][i][h->mb.i_mb_xy] ) = 0;
+
+                timer_end(&h->timer.encoder_encode.mb_analyse.total);
+                timer_end(&h->timer.encoder_encode.mb_analyse.p);
                 return;
             }
 
@@ -3402,6 +3405,9 @@ skip_analysis:
                     M32( h->mb.mvr[0][i][h->mb.i_mb_xy] ) = 0;
                 for( int i = 1; i < h->mb.pic.i_fref[1]; i++ )
                     M32( h->mb.mvr[1][i][h->mb.i_mb_xy] ) = 0;
+
+                timer_end(&h->timer.encoder_encode.mb_analyse.total);
+                timer_end(&h->timer.encoder_encode.mb_analyse.b);
                 return;
             }
 
@@ -3422,6 +3428,9 @@ skip_analysis:
                 {
                     h->mb.i_type = B_SKIP;
                     analyse_update_cache( h, &analysis );
+
+                    timer_end(&h->timer.encoder_encode.mb_analyse.total);
+                    timer_end(&h->timer.encoder_encode.mb_analyse.b);
                     return;
                 }
             }

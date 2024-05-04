@@ -617,6 +617,8 @@ void x264_predict_lossless_16x16( x264_t *h, int p, int i_mode )
  *****************************************************************************/
 static ALWAYS_INLINE void macroblock_encode_internal( x264_t *h, int plane_count, int chroma )
 {
+    timer_start(&h->timer.encoder_encode.mb_encode);
+
     int i_qp = h->mb.i_qp;
     int b_decimate = h->mb.b_dct_decimate;
     int b_force_no_skip = 0;
@@ -636,6 +638,8 @@ static ALWAYS_INLINE void macroblock_encode_internal( x264_t *h, int plane_count
             h->mc.copy[PIXEL_8x8]  ( h->mb.pic.p_fdec[1], FDEC_STRIDE, h->mb.pic.p_fenc[1], FENC_STRIDE, height );
             h->mc.copy[PIXEL_8x8]  ( h->mb.pic.p_fdec[2], FDEC_STRIDE, h->mb.pic.p_fenc[2], FENC_STRIDE, height );
         }
+
+        timer_end(&h->timer.encoder_encode.mb_encode);
         return;
     }
 
@@ -692,6 +696,8 @@ static ALWAYS_INLINE void macroblock_encode_internal( x264_t *h, int plane_count
         }
 
         macroblock_encode_skip( h );
+
+        timer_end(&h->timer.encoder_encode.mb_encode);
         return;
     }
     if( h->mb.i_type == B_SKIP )
@@ -700,6 +706,8 @@ static ALWAYS_INLINE void macroblock_encode_internal( x264_t *h, int plane_count
         if( !h->mb.b_skip_mc )
             x264_mb_mc( h );
         macroblock_encode_skip( h );
+
+        timer_end(&h->timer.encoder_encode.mb_encode);
         return;
     }
 
@@ -969,6 +977,8 @@ static ALWAYS_INLINE void macroblock_encode_internal( x264_t *h, int plane_count
             h->mb.i_type = B_SKIP;
         }
     }
+
+    timer_end(&h->timer.encoder_encode.mb_encode);
 }
 
 void x264_macroblock_encode( x264_t *h )
