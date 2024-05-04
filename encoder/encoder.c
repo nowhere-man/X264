@@ -2420,11 +2420,11 @@ static inline void reference_build_list( x264_t *h, int i_poc )
 
     for (int i = 0; i < h->i_ref[0]; i++) {
         log_trace("[build_ref_list]h->fref[0][%d]->i_frame=%d, h->fref[0][%d]->i_poc=%d",
-            h->fref[0][i]->i_frame, h->fref[0][i]->i_poc);
+            i, h->fref[0][i]->i_frame, i, h->fref[0][i]->i_poc);
     }
     for (int i = 0; i < h->i_ref[1]; i++) {
         log_trace("[build_ref_list]h->fref[1][%d]->i_frame=%d, h->fref[1][%d]->i_poc=%d",
-            h->fref[1][i]->i_frame, h->fref[1][i]->i_poc);
+            i, h->fref[1][i]->i_frame, i, h->fref[1][i]->i_poc);
     }
 }
 
@@ -2552,7 +2552,7 @@ static inline int reference_update( x264_t *h )
 {
     if( !h->fdec->b_kept_as_ref )
     {
-        log_trace("[ref_updte][h->fdec->b_kept_as_ref]h->fdec->i_frame:%d, h->fdec->i_codec:%d", h->fdec->i_frame, h->fdec->i_coded);
+        log_trace("[ref_updte][!b_kept_as_ref]h->fdec->i_frame:%d, h->fdec->i_codec:%d", h->fdec->i_frame, h->fdec->i_coded);
         if( h->i_thread_frames > 1 )
         {
             x264_frame_push_unused( h, h->fdec );
