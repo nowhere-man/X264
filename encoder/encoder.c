@@ -2548,11 +2548,15 @@ static void fdec_filter_row( x264_t *h, int mb_y, int pass )
     }
 }
 
+/// @brief 如果重建帧fdec是参考帧，则将其添加到h->frames.reference
+/// @note 1. 在编码下一帧的时候才将上一帧的重建帧添加到h->frames.reference中
+/// @note 2. h->frames.reference的个数受到h->sps->i_num_ref_frames的限制
 static inline int reference_update( x264_t *h )
 {
     if( !h->fdec->b_kept_as_ref )
     {
-        log_trace("[ref_updte][!b_kept_as_ref]h->fdec->i_frame:%d, h->fdec->i_codec:%d", h->fdec->i_frame, h->fdec->i_coded);
+        log_trace("[ref_upd][!b_kept_as_ref]h->fdec->i_frame:%d,h->fdec->i_poc:%d,h->fdec->i_type:%d",
+            h->fdec->i_frame, h->fdec->i_poc, h->fdec->i_type);
         if( h->i_thread_frames > 1 )
         {
             x264_frame_push_unused( h, h->fdec );
@@ -2567,19 +2571,25 @@ static inline int reference_update( x264_t *h )
     for( int i = 0; i < h->sh.i_mmco_command_count; i++ )
         for( int j = 0; h->frames.reference[j]; j++ )
             if( h->frames.reference[j]->i_poc == h->sh.mmco[i].i_poc ) {
-                log_trace("[ref_update]h->frames.reference[%d]->i_poc:%d", j, h->frames.reference[j]->i_poc);
+                log_trace("[ref_upd][mmco]h->frames.reference[%d]->i_frame:%d,h->frames.reference[%d]->i_poc:%d",
+                    j, h->frames.reference[j]->i_frame, j, h->frames.reference[j]->i_poc);
                 x264_frame_push_unused( h, x264_frame_shift( &h->frames.reference[j] ) );
             }
 
-    log_trace("[ref_updte][before move to ref]h->fdec->i_frame:%d, h->fdec->i_codec:%d",
-        h->fdec->i_frame, h->fdec->i_coded);
+    log_trace("[ref_upd][move fdec to ref]h->fdec->i_frame:%d,h->fdec->i_poc:%d,h->fdec->i_type:%d",
+            h->fdec->i_frame, h->fdec->i_poc, h->fdec->i_type);
+
     /* move frame in the buffer */
     x264_frame_push( h->frames.reference, h->fdec );
     if( h->frames.reference[h->sps->i_num_ref_frames] )
         x264_frame_push_unused( h, x264_frame_shift( h->frames.reference ) );
+
+    for (int i = 0; h->frames.reference[i]; i++) {
+        log_trace("[ref_upd][h->frames.reference]h->frames.reference[%d]->i_frame:%d,h->frames.reference[%d]->i_poc:%d,h->frames.reference[%d]->i_type:%d",
+            i, h->frames.reference[i]->i_frame, i, h->frames.reference[i]->i_poc, i, h->frames.reference[i]->i_type);
+    }
+
     h->fdec = x264_frame_pop_unused( h, 1 );
-    log_trace("[ref_updte][after move to ref]h->fdec->i_frame:%d, h->fdec->i_codec:%d,h->fdec->b_kept_as_ref:%d",
-        h->fdec->i_frame, h->fdec->i_coded, h->fdec->b_kept_as_ref);
     if( !h->fdec )
         return -1;
     return 0;
