@@ -22,6 +22,7 @@ void log_time(x264_time_t* time)
     log_info("  Adaptive quant time: %.2f ms", time->encoder_encode.aq.duration);
     log_info("  Lowres init time: %.2f ms", time->encoder_encode.lower_res_init.duration);
     log_info("  Lookahead time: %.2f ms", time->encoder_encode.lookahead.duration);
+    log_info("  Build ref list time: %.2f ms", time->encoder_encode.build_ref_list.duration);
     log_info("  Ratecontrol time: %.2f ms", time->encoder_encode.ratecontrol.duration);
     log_info("  Mb analysis time: %.2f ms", time->encoder_encode.mb_analyse.total.duration);
     log_info("    I frame analysis time: %.2f ms", time->encoder_encode.mb_analyse.i.total.duration);

@@ -2311,6 +2311,7 @@ static inline int reference_distance( x264_t *h, x264_frame_t *frame )
 /// @note 3. 如果开启WEIGHTP，则会按策略复制若干个h->fref[0][0]到h->fref[0]中
 static inline void reference_build_list( x264_t *h, int i_poc )
 {
+    timer_start(&h->timer.encoder_encode.build_ref_list);
     int b_ok;
 
     /* build ref list 0/1 */
@@ -2435,6 +2436,8 @@ static inline void reference_build_list( x264_t *h, int i_poc )
     assert( h->i_ref[0] + h->i_ref[1] <= X264_REF_MAX );
     h->mb.pic.i_fref[0] = h->i_ref[0];
     h->mb.pic.i_fref[1] = h->i_ref[1];
+
+    timer_end(&h->timer.encoder_encode.build_ref_list);
 
     for (int i = 0; i < h->i_ref[0]; i++) {
         log_trace("[ref_build]h->fref[0][%d]->i_frame=%d, h->fref[0][%d]->i_poc=%d",
@@ -2571,6 +2574,8 @@ static void fdec_filter_row( x264_t *h, int mb_y, int pass )
 /// @note 2. h->frames.reference的个数受到h->sps->i_num_ref_frames的限制
 static inline int reference_update( x264_t *h )
 {
+    timer_start(&h->timer.encoder_encode.build_ref_list);
+
     if( !h->fdec->b_kept_as_ref )
     {
         log_trace("[ref_upd][!b_kept_as_ref]h->fdec->i_frame:%d,h->fdec->i_poc:%d,h->fdec->i_type:%d",
@@ -2610,6 +2615,8 @@ static inline int reference_update( x264_t *h )
     h->fdec = x264_frame_pop_unused( h, 1 );
     if( !h->fdec )
         return -1;
+
+    timer_end(&h->timer.encoder_encode.build_ref_list);
     return 0;
 }
 
@@ -2624,6 +2631,8 @@ static inline void reference_reset( x264_t *h )
 /// @brief close-gop下没有实际行为
 static inline void reference_hierarchy_reset( x264_t *h )
 {
+    timer_start(&h->timer.encoder_encode.build_ref_list);
+
     int ref;
     int b_hasdelayframe = 0;
     /* look for delay frames -- chain must only contain frames that are disposable */
@@ -2662,6 +2671,7 @@ static inline void reference_hierarchy_reset( x264_t *h )
     if( h->param.i_bframe_pyramid )
         h->sh.i_mmco_remove_from_end = X264_MAX( ref + 2 - h->frames.i_max_dpb, 0 );
 
+    timer_end(&h->timer.encoder_encode.build_ref_list);
     log_trace("[hierarchy_reset]h->sh.i_mmco_remove_from_end:%d", h->sh.i_mmco_remove_from_end);
 }
 
