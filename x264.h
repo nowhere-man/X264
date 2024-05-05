@@ -271,11 +271,13 @@ static const char * const x264_avcintra_flavor_names[] = { "panasonic", "sony", 
 /* Slice type */
 #define X264_TYPE_AUTO          0x0000  /* Let x264 choose the right type */
 #define X264_TYPE_IDR           0x0001
+// 如果不考虑scenccut的情况，close-gop没有X264_TYPE_I，只有X264_TYPE_IDR
 #define X264_TYPE_I             0x0002
 #define X264_TYPE_P             0x0003
 #define X264_TYPE_BREF          0x0004  /* Non-disposable B-frame */
 #define X264_TYPE_B             0x0005
-#define X264_TYPE_KEYFRAME      0x0006  /* IDR or I depending on b_open_gop option */
+// 只有外部输出才会将帧类型指定为X264_TYPE_KEYFRAME，帧决策只会决策出X264_TYPE_IDR和X264_TYPE_I
+#define X264_TYPE_KEYFRAME      0x0006
 #define IS_X264_TYPE_I(x) ((x)==X264_TYPE_I || (x)==X264_TYPE_IDR || (x)==X264_TYPE_KEYFRAME)
 #define IS_X264_TYPE_B(x) ((x)==X264_TYPE_B || (x)==X264_TYPE_BREF)
 

@@ -30,7 +30,7 @@
                 "--rc-lookahead", "4",
                 // analysis
                 "--me", "dia",
-                "--ref", "3",
+                "--ref", "5",
                 // output
                 "--output", "${workspaceFolder}/resource/foreman_176x144_300.h264",
                 "${workspaceFolder}/resource/foreman_176x144_300.yuv"
@@ -75,7 +75,7 @@
                 "--rc-lookahead", "4",
                 // analysis
                 "--me", "dia",
-                "--ref", "3",
+                "--ref", "5",
                 // output
                 "--output", "${workspaceFolder}/resource/foreman_176x144_300.h264",
                 "${workspaceFolder}/resource/foreman_176x144_300.yuv"
@@ -121,7 +121,7 @@
                 "--rc-lookahead", "4",
                 // analysis
                 "--me", "dia",
-                "--ref", "3",
+                "--ref", "5",
                 // output
                 "--output", "${workspaceFolder}/resource/foreman_176x144_300.h264",
                 "${workspaceFolder}/resource/foreman_176x144_300.yuv"
@@ -158,7 +158,7 @@
                 "--rc-lookahead", "4",
                 // analysis
                 "--me", "dia",
-                "--ref", "3",
+                "--ref", "5",
                 // output
                 "--output", "${workspaceFolder}/resource/foreman_176x144_300.h264",
                 "${workspaceFolder}/resource/foreman_176x144_300.yuv"

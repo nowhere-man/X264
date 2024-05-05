@@ -2159,9 +2159,13 @@ static inline void reference_check_reorder( x264_t *h )
         {
             int framenum_diff = h->fref[list][i+1]->i_frame_num - h->fref[list][i]->i_frame_num;
             int poc_diff = h->fref[list][i+1]->i_poc - h->fref[list][i]->i_poc;
+            // 对P帧：framenum_diff必须小于等于0
+            // 对B帧：h->fref[0]的poc_diff必须小于等于0；h->fref[1]的poc_diff必须大于等于0
             /* P and B-frames use different default orders. */
             if( h->sh.i_type == SLICE_TYPE_P ? framenum_diff > 0 : list == 1 ? poc_diff < 0 : poc_diff > 0 )
             {
+                log_trace("[ref_check_order][reorder]h->sh.i_type:%d,list:%d,i:%d,framenum_diff:%d,poc_diff:%d",
+                    h->sh.i_type, list, i, framenum_diff, poc_diff);
                 h->b_ref_reorder[list] = 1;
                 return;
             }
@@ -2301,6 +2305,10 @@ static inline int reference_distance( x264_t *h, x264_frame_t *frame )
         return abs(h->fenc->i_frame - frame->i_frame);
 }
 
+/// @brief 将h->frames.reference分配到h->fref[0]和h->fref[1]中
+/// @note 1. 将poc比fenc->poc小的ref frame分配给h->fref[0], 且按poc降序排列
+/// @note 2. 将poc比fenc->poc大的ref frame分配给h->fref[1], 且按poc升序排列
+/// @note 3. 如果开启WEIGHTP，则会按策略复制若干个h->fref[0][0]到h->fref[0]中
 static inline void reference_build_list( x264_t *h, int i_poc )
 {
     int b_ok;
@@ -2311,6 +2319,8 @@ static inline void reference_build_list( x264_t *h, int i_poc )
     if( h->sh.i_type == SLICE_TYPE_I )
         return;
 
+    // h->fref[0]中frame的poc都比fenc的poc小
+    // h->fref[1]中frame的poc都比fenc的poc大
     for( int i = 0; h->frames.reference[i]; i++ )
     {
         if( h->frames.reference[i]->b_corrupt )
@@ -2321,6 +2331,7 @@ static inline void reference_build_list( x264_t *h, int i_poc )
             h->fref[1][h->i_ref[1]++] = h->frames.reference[i];
     }
 
+    // 使能open-gop才会进入
     if( h->sh.i_mmco_remove_from_end )
     {
         /* Order ref0 for MMCO remove */
@@ -2355,17 +2366,22 @@ static inline void reference_build_list( x264_t *h, int i_poc )
             b_ok = 1;
             for( int i = 0; i < h->i_ref[list] - 1; i++ )
             {
+                // h->fref_nearest[0]是h->f_ref[0]中poc最大的frame，即h->f_ref[0]中离fenc最近的frame
+                // h->fref_nearest[1]是h->f_ref[1]中poc最小的frame，即h->f_ref[1]中离fenc最近的frame
                 if( list ? h->fref[list][i+1]->i_poc < h->fref_nearest[list]->i_poc
                          : h->fref[list][i+1]->i_poc > h->fref_nearest[list]->i_poc )
                     h->fref_nearest[list] = h->fref[list][i+1];
+
+                // h->fref[0]按poc降序排列
+                // h->fref[1]按poc升序排列
                 if( reference_distance( h, h->fref[list][i] ) > reference_distance( h, h->fref[list][i+1] ) )
                 {
                     XCHG( x264_frame_t*, h->fref[list][i], h->fref[list][i+1] );
-                    b_ok = 0;
+                    b_ok = 0; // 每次exchange后重新进入for循环
                     break;
                 }
             }
-        } while( !b_ok );
+        } while( !b_ok ); // b_ok等于1时退出for循环
     }
 
     reference_check_reorder( h );
@@ -2379,6 +2395,8 @@ static inline void reference_build_list( x264_t *h, int i_poc )
         h->i_ref[0] = X264_MIN( h->i_ref[0], IS_X264_TYPE_B( h->fref[0][0]->i_type ) + 1 );
 
     /* add duplicates */
+    // 如果开启加权P，则会复制若干个h->fref[0][0]到h->fref[0]中
+    // TODO:待分析WEIGHTP
     if( h->fenc->i_type == X264_TYPE_P )
     {
         int idx = -1;
@@ -2419,11 +2437,11 @@ static inline void reference_build_list( x264_t *h, int i_poc )
     h->mb.pic.i_fref[1] = h->i_ref[1];
 
     for (int i = 0; i < h->i_ref[0]; i++) {
-        log_trace("[build_ref_list]h->fref[0][%d]->i_frame=%d, h->fref[0][%d]->i_poc=%d",
+        log_trace("[ref_build]h->fref[0][%d]->i_frame=%d, h->fref[0][%d]->i_poc=%d",
             i, h->fref[0][i]->i_frame, i, h->fref[0][i]->i_poc);
     }
     for (int i = 0; i < h->i_ref[1]; i++) {
-        log_trace("[build_ref_list]h->fref[1][%d]->i_frame=%d, h->fref[1][%d]->i_poc=%d",
+        log_trace("[ref_build]h->fref[1][%d]->i_frame=%d, h->fref[1][%d]->i_poc=%d",
             i, h->fref[1][i]->i_frame, i, h->fref[1][i]->i_poc);
     }
 }
@@ -2585,7 +2603,7 @@ static inline int reference_update( x264_t *h )
         x264_frame_push_unused( h, x264_frame_shift( h->frames.reference ) );
 
     for (int i = 0; h->frames.reference[i]; i++) {
-        log_trace("[ref_upd][h->frames.reference]h->frames.reference[%d]->i_frame:%d,h->frames.reference[%d]->i_poc:%d,h->frames.reference[%d]->i_type:%d",
+        log_trace("[ref_upd][reference]h->frames.reference[%d]->i_frame:%d,h->frames.reference[%d]->i_poc:%d,h->frames.reference[%d]->i_type:%d",
             i, h->frames.reference[i]->i_frame, i, h->frames.reference[i]->i_poc, i, h->frames.reference[i]->i_type);
     }
 
@@ -2603,11 +2621,11 @@ static inline void reference_reset( x264_t *h )
     h->fenc->i_poc = 0;
 }
 
+/// @brief close-gop下没有实际行为
 static inline void reference_hierarchy_reset( x264_t *h )
 {
     int ref;
     int b_hasdelayframe = 0;
-    log_trace("[hierarchy_reset]h->sh.i_type:%d", h->sh.i_type);
     /* look for delay frames -- chain must only contain frames that are disposable */
     for( int i = 0; h->frames.current[i] && IS_DISPOSABLE( h->frames.current[i]->i_type ); i++ )
         b_hasdelayframe |= h->frames.current[i]->i_coded
@@ -3528,6 +3546,7 @@ int     x264_encoder_encode( x264_t *h,
         return -1;
     h->fdec->i_lines_completed = -1;
 
+    // b_corrupt默认为0，由外部调用x264_encoder_invalidate_reference()将其置为1
     if( !IS_X264_TYPE_I( h->fenc->i_type ) )
     {
         int valid_refs_left = 0;
