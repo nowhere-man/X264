@@ -262,26 +262,49 @@ void          x264_threadslice_cond_broadcast( x264_t *h, int pass );
 #define x264_threadslice_cond_wait x264_template(threadslice_cond_wait)
 void          x264_threadslice_cond_wait( x264_t *h, int pass );
 
+/// @brief 将frame移到list末尾
+/// @note void x264_frame_push(x264_frame_t **list, x264_frame_t *frame)
 #define x264_frame_push x264_template(frame_push)
 X264_API void          x264_frame_push( x264_frame_t **list, x264_frame_t *frame );
-#define x264_frame_pop x264_template(frame_pop)
+
+/// @brief 移除list末尾的frame，并返回该frame
+/// @note x264_frame_t *x264_frame_pop(x264_frame_t **list)
 X264_API x264_frame_t *x264_frame_pop( x264_frame_t **list );
+
+/// @brief 将frame插入到list首位
+/// @note void x264_frame_unshift(x264_frame_t **list, x264_frame_t *frame)
 #define x264_frame_unshift x264_template(frame_unshift)
 X264_API void          x264_frame_unshift( x264_frame_t **list, x264_frame_t *frame );
+
+/// @brief 从frames中移除frames[0]， 并返回frames[0]
+/// @note x264_frame_t *x264_frame_shift(x264_frame_t **frames)
 #define x264_frame_shift x264_template(frame_shift)
 X264_API x264_frame_t *x264_frame_shift( x264_frame_t **list );
 
+/// @brief frame->i_reference_count减1，如果减1后为0，则将frame移到h->frames.unused[frame->b_fdec]末尾
+/// @note void x264_frame_push_unused(x264_t *h, x264_frame_t *frame)
 #define x264_frame_push_unused x264_template(frame_push_unused)
 void          x264_frame_push_unused( x264_t *h, x264_frame_t *frame );
+
+/// @brief frame->i_reference_count减1，如果减1后为0，则将frame移到h->frames.blank_unused末尾
+/// @note void x264_frame_push_blank_unused(x264_t *h, x264_frame_t *frame)
 #define x264_frame_push_blank_unused x264_template(frame_push_blank_unused)
 void          x264_frame_push_blank_unused( x264_t *h, x264_frame_t *frame );
+
+/// @brief 如果 h->frames.unused[b_fdec]不为空，移除并返回其末尾的frame，否则创建新的frame并返回
+/// @note x264_frame_t *x264_frame_pop_blank_unused(x264_t *h)
+/// @note 返回前将framei_reference_count置为1
+#define x264_frame_pop_unused x264_template(frame_pop_unused)
+x264_frame_t *x264_frame_pop_unused( x264_t *h, int b_fdec );
+
+/// @brief 如果h->frames.blank_unused不为空，移除并返回其末尾的frame，否则创建新的frame并返回
+/// @note x264_frame_t *x264_frame_pop_unused( x264_t *h, int b_fdec )
+/// @note 返回前将frame的b_duplicate和i_reference_count置为1
 #define x264_frame_pop_blank_unused x264_template(frame_pop_blank_unused)
 x264_frame_t *x264_frame_pop_blank_unused( x264_t *h );
 #define x264_weight_scale_plane x264_template(weight_scale_plane)
 void x264_weight_scale_plane( x264_t *h, pixel *dst, intptr_t i_dst_stride, pixel *src, intptr_t i_src_stride,
                               int i_width, int i_height, x264_weight_t *w );
-#define x264_frame_pop_unused x264_template(frame_pop_unused)
-x264_frame_t *x264_frame_pop_unused( x264_t *h, int b_fdec );
 #define x264_frame_delete_list x264_template(frame_delete_list)
 void          x264_frame_delete_list( x264_frame_t **list );
 
