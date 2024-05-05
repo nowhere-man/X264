@@ -39,6 +39,7 @@
 #include "common/common.h"
 #include "analyse.h"
 
+/// @brief 将src->list的后count个frame依次移动到dst->list的末尾
 static void lookahead_shift( x264_sync_frame_list_t *dst, x264_sync_frame_list_t *src, int count )
 {
     int i = count;
@@ -58,10 +59,15 @@ static void lookahead_shift( x264_sync_frame_list_t *dst, x264_sync_frame_list_t
 
 static void lookahead_update_last_nonb( x264_t *h, x264_frame_t *new_nonb )
 {
-    if( h->lookahead->last_nonb )
+    if( h->lookahead->last_nonb ) {
+        log_trace("[lookahead][update_last_nonb]old_nonb->i_frame:%d,old_nonb->i_type:%d,old_nonb->i_reference_count:%d",
+            h->lookahead->last_nonb->i_frame, h->lookahead->last_nonb->i_type, h->lookahead->last_nonb->i_reference_count);
         x264_frame_push_unused( h, h->lookahead->last_nonb );
+    }
     h->lookahead->last_nonb = new_nonb;
     new_nonb->i_reference_count++;
+    log_trace("[lookahead][update_last_nonb]new_nonb->i_frame:%d,new_nonb->i_type:%d,new_nonb->i_reference_count:%d",
+        new_nonb->i_frame, new_nonb->i_type, new_nonb->i_reference_count);
 }
 
 #if HAVE_THREAD
@@ -207,6 +213,8 @@ int x264_lookahead_is_empty( x264_t *h )
     return b_empty;
 }
 
+/// @brief 从h->lookahead->ofbuf.list中移除前n个frame，并移动到h->frames.current的末尾
+/// @note 其中n的值为h->lookahead->ofbuf.list[0]->i_bframes + 1
 static void lookahead_encoder_shift( x264_t *h )
 {
     if( !h->lookahead->ofbuf.i_size )
@@ -237,6 +245,7 @@ void x264_lookahead_get_frames( x264_t *h )
 
         if( h->frames.current[0] || !h->lookahead->next.i_size ) {
             timer_end(&h->timer.encoder_encode.lookahead);
+            log_trace("[lookahead]h->frames.current[0] is not null or h->lookahead->next.i_size == 0");
             return;
         }
 

@@ -312,8 +312,14 @@ void          x264_frame_delete_list( x264_frame_t **list );
 int           x264_sync_frame_list_init( x264_sync_frame_list_t *slist, int nelem );
 #define x264_sync_frame_list_delete x264_template(sync_frame_list_delete)
 void          x264_sync_frame_list_delete( x264_sync_frame_list_t *slist );
+
+/// @brief 将frame添加到slist->list的末尾，并将slist->i_size加一
+/// @note void x264_sync_frame_list_push(x264_sync_frame_list_t *slist, x264_frame_t *frame)
 #define x264_sync_frame_list_push x264_template(sync_frame_list_push)
 void          x264_sync_frame_list_push( x264_sync_frame_list_t *slist, x264_frame_t *frame );
+
+/// @brief 将slist末尾的frame移除，并返回该frame，同时slist->size减一
+/// @note x264_frame_t *x264_sync_frame_list_pop(x264_sync_frame_list_t *slist)
 #define x264_sync_frame_list_pop x264_template(sync_frame_list_pop)
 x264_frame_t *x264_sync_frame_list_pop( x264_sync_frame_list_t *slist );
 

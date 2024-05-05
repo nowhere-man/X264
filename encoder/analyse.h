@@ -45,6 +45,9 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop );
 int  x264_lookahead_init( x264_t *h, int i_slicetype_length );
 #define x264_lookahead_is_empty x264_template(lookahead_is_empty)
 int  x264_lookahead_is_empty( x264_t *h );
+
+/// @brief 如果开启i_sync_lookahead, 则将frame添加到h->lookahead->ifbuf->list末尾，否则添加到h->lookahead->next->list末尾
+/// @note void x264_lookahead_put_frame(x264_t *h, x264_frame_t *frame)
 #define x264_lookahead_put_frame x264_template(lookahead_put_frame)
 void x264_lookahead_put_frame( x264_t *h, x264_frame_t *frame );
 #define x264_lookahead_get_frames x264_template(lookahead_get_frames)
