@@ -37,6 +37,7 @@
  * # of bframes + # of threads.
  */
 #include "common/common.h"
+#include "common/log.h"
 #include "analyse.h"
 
 /// @brief 将src->list的后count个frame依次移动到dst->list的末尾
