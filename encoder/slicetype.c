@@ -1489,6 +1489,8 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
 
     assert( h->frames.b_have_lowres );
 
+    log_trace("[lookahead][analyse]i_max_search=%d,intra_minigop=%d", i_max_search, intra_minigop);
+
     if( !h->lookahead->last_nonb )
         return;
     frames[0] = h->lookahead->last_nonb;
@@ -1506,6 +1508,8 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
 
     keyint_limit = h->param.i_keyint_max - frames[0]->i_frame + h->lookahead->i_last_keyframe - 1;
     orig_num_frames = num_frames = h->param.b_intra_refresh ? framecnt : X264_MIN( framecnt, keyint_limit );
+
+    log_trace("[lookahead][analyse]keyint_limit=%d,num_frames=%d,framecnt=%d", keyint_limit, num_frames, framecnt);
 
     /* This is important psy-wise: if we have a non-scenecut keyframe,
      * there will be significant visual artifacts if the frames just before
@@ -1645,7 +1649,7 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
                     num_bframes = h->param.i_bframe;
             }
         }
-        if( IS_X264_TYPE_AUTO_OR_B( frames[num_frames]->i_type ) )
+        if( IS_X264_TYPE_AUTO_OR_B( frames[num_frames]->i_type ) ) // 最后一帧一定是P帧
             frames[num_frames]->i_type = X264_TYPE_P;
 
         int num_bframes = 0;
@@ -1663,7 +1667,7 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
                 break;
             }
         }
-
+        // reset_start及以后的帧类型会重置为AUTO，下一次lookahead重新分析
         reset_start = keyframe ? 1 : X264_MIN( num_bframes+2, num_analysed_frames+1 );
     }
     else
@@ -1755,6 +1759,9 @@ void x264_slicetype_decide( x264_t *h )
         return;
 
     int lookahead_size = h->lookahead->next.i_size;
+    for (size_t i = 0; i < lookahead_size; i++) {
+        log_trace("[lookahead][decide]h->lookahead->next.list[%d]->i_pts=%d,", i, h->lookahead->next.list[i]->i_pts);
+    }
 
     for( int i = 0; i < h->lookahead->next.i_size; i++ )
     {
