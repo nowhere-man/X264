@@ -27,7 +27,6 @@
 
 #include "common/common.h"
 
-#include "common/log.h"
 #include "common/dfx_capture.h"
 #include "common/timer.h"
 
