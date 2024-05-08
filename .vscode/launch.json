@@ -20,7 +20,7 @@
                 // structure
                 "--keyint", "30",
                 "--bframes", "3",
-                "--b-adapt", "0",
+                "--b-adapt", "1",
                 "--b-pyramid", "none",
                 "--no-scenecut",
                 // rc
@@ -65,7 +65,7 @@
                 // structure
                 "--keyint", "30",
                 "--bframes", "3",
-                "--b-adapt", "0",
+                "--b-adapt", "1",
                 "--b-pyramid", "none",
                 "--no-scenecut",
                 // rc
@@ -111,7 +111,7 @@
                 // structure
                 "--keyint", "30",
                 "--bframes", "3",
-                "--b-adapt", "0",
+                "--b-adapt", "1",
                 "--b-pyramid", "none",
                 "--no-scenecut",
                 // rc
@@ -148,7 +148,7 @@
                 // structure
                 "--keyint", "30",
                 "--bframes", "3",
-                "--b-adapt", "0",
+                "--b-adapt", "1",
                 "--b-pyramid", "none",
                 "--no-scenecut",
                 // rc

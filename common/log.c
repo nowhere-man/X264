@@ -67,7 +67,7 @@ static void stdout_callback(log_event_t *ev)
 static void file_callback(log_event_t *ev)
 {
     char buf[64];
-    buf[strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", ev->time)] = '\0';
+    buf[strftime(buf, sizeof(buf), "%H:%M:%S", ev->time)] = '\0';
     fprintf(
         ev->udata, "%s %-5s %s:%d: ",
         buf, level_strings[ev->level], ev->file, ev->line);
