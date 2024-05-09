@@ -1292,43 +1292,42 @@ static void vbv_lookahead( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **fram
     frames[next_nonb]->i_planned_type[idx] = X264_TYPE_AUTO;
 }
 
-/// @brief 当X为B或P时,计算[nonb][B ...B](X)[P]这种帧结构的cost
+/// @brief 计算给定帧结构[cur_nonb][path]的cost
 static uint64_t slicetype_path_cost( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **frames, char *path, uint64_t threshold )
 {
     /*
-     * 如果X是B:
-     * 1. 计算P参考nonb时的cost
-     * 2. 计算[B...B,(B)]参考nonb和P时的cost，如果开启b_pyramid且[B...B,(B)]的个数大于2，取其中间的B帧作为Bref:[B...Bmid...B,(B)]
-     *      a. 计算Bmid参考nonb和P的cost
-     *      b. 计算[B...Bmid)参考nonb和Bmid的cost
-     *      c. 计算(Bmid, B,(B)]参考Bmid和P的cost
-     * 3. 累加所有的cost
-     * 如果X是P:
-     * 1. 计算(P)参考nonb时的cost
-     * 2. 重复上述步骤2
-     * 3. 计算P参考(P)时的cost
-     * 4.累加所有的cost
+     * 1. 计算path中第一个非B帧next_nonb参考cur_nonb时的cost
+     * 2. 计算cur_nonb和next_nonb之间的B帧参考cur_nonb和next_nonb的cost
+     *    如果开启b_pyramid且cur_nonb和next_nonb之间的B帧个数大于1，取其中间的B帧作为Bref:[B...Bmid...B]
+     *      a. 计算Bmid参考cur_nonb和next_nonb的cost
+     *      b. 计算[B...Bmid)参考cur_nonb和Bmid的cost
+     *      c. 计算(Bmid...B]参考Bmid和next_nonb的cost
+     * 3. 将next_nonb作为cur_nonb,将path[cur_nonb+1]作为新的path，重复上述步骤
+     * 4. 累加计算出的所有cost并返回
      */
     uint64_t cost = 0;
     int loc = 1;
     int cur_nonb = 0;
-    log_trace("[lookahead][analyse][path_cost]path=%s", path);
+    log_trace("[lookahead][path_cost]path=%s", path);
     path--; /* Since the 1st path element is really the second frame:path[0]实际是frames[1]的帧类型,frames[0]是last_nonb */
     while( path[loc] )
     {
         // next_nonb为从cur_nonb开始下一个非B帧
         int next_nonb = loc;
-        log_trace("[lookahead][analyse][path_cost]cur_nonb=%d,next_nonb=%d,path[%d]=%c", cur_nonb, next_nonb, next_nonb, path[next_nonb]);
         /* Find the location of the next non-B-frame. */
         while( path[next_nonb] == 'B' )
             next_nonb++;
-        log_trace("[lookahead][analyse][path_cost]next_nonb=%d,path[%d]=%c", next_nonb, next_nonb, path[next_nonb]);
+        log_trace("[lookahead][path_cost]loc=%d,cur_nonb=%d,next_nonb=%d,path[%d]=%c", loc, cur_nonb, next_nonb, next_nonb, path[next_nonb]);
 
         /* Add the cost of the non-B-frame found above */
-        if( path[next_nonb] == 'P' )
+        if( path[next_nonb] == 'P' )  {
+            log_trace("[lookahead][path_cost]calculate P cost,p0=%d,b=%d,p1=%d", cur_nonb, next_nonb, next_nonb);
             cost += slicetype_frame_cost( h, a, frames, cur_nonb, next_nonb, next_nonb );
-        else /* I-frame */
+        }
+        else /* I-frame */ {
+            log_trace("[lookahead][path_cost]calculate I cost,p0=%d,b=%d,p1=%d", next_nonb, next_nonb, next_nonb);
             cost += slicetype_frame_cost( h, a, frames, next_nonb, next_nonb, next_nonb );
+        }
         /* Early terminate if the cost we have found is larger than the best path cost so far */
         if( cost > threshold )
             break;
@@ -1336,15 +1335,20 @@ static uint64_t slicetype_path_cost( x264_t *h, x264_mb_analysis_t *a, x264_fram
         if( h->param.i_bframe_pyramid && next_nonb - cur_nonb > 2 )
         {
             int middle = cur_nonb + (next_nonb - cur_nonb)/2;
+            log_trace("[lookahead][path_cost]calculate Bref cost,middle=%d, p0=%d,b=%d,p1=%d", middle, cur_nonb, middle, next_nonb);
             cost += slicetype_frame_cost( h, a, frames, cur_nonb, next_nonb, middle );
-            for( int next_b = loc; next_b < middle && cost < threshold; next_b++ )
+            for( int next_b = loc; next_b < middle && cost < threshold; next_b++ ) {
+                log_trace("[lookahead][path_cost]calculate front half B cost,p0=%d,b=%d,p1=%d", cur_nonb, next_b, middle);
                 cost += slicetype_frame_cost( h, a, frames, cur_nonb, middle, next_b );
-            for( int next_b = middle+1; next_b < next_nonb && cost < threshold; next_b++ )
+            }
+            for( int next_b = middle+1; next_b < next_nonb && cost < threshold; next_b++ ) {
+                log_trace("[lookahead][path_cost]calculate rear half B cost,p0=%d,b=%d,p1=%d", middle, next_b, next_nonb);
                 cost += slicetype_frame_cost( h, a, frames, middle, next_nonb, next_b );
+            }
         }
         else
             for( int next_b = loc; next_b < next_nonb && cost < threshold; next_b++ ) {
-                log_trace("[lookahead][analyse][path_cost][B]p0=%d,p1=%d,b=%d", cur_nonb, next_nonb, next_b);
+                log_trace("[lookahead][path_cost]calculate B cost, p0=%d,p1=%d,b=%d", cur_nonb, next_b, next_nonb);
                 cost += slicetype_frame_cost( h, a, frames, cur_nonb, next_nonb, next_b );
             }
 
@@ -1360,12 +1364,23 @@ static uint64_t slicetype_path_cost( x264_t *h, x264_mb_analysis_t *a, x264_fram
    it makes debugging easier. */
 static void slicetype_path( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **frames, int length, char (*best_paths)[X264_LOOKAHEAD_MAX+1] )
 {
+    /* 计算帧个数为length时的最优帧结构，将结果保存在best_paths[length]中
+     * 前提1：计算帧个数为length时的最优帧结构时，已经计算出来了帧个数为[0,1...length-1]时的帧结构
+     * 前提2：最后一个帧类型必定是P
+     * 1. 获取帧个数为length-1时的最优帧结构,记为Best(n-1)，在Best(n-1)和P之间插入0个B帧，计算[Best(n-1)][P]的cost
+     * 2. 获取帧个数为length-2时的最优帧结构,记为Best(n-2)，在Best(n-1)和P之间插入1个B帧，计算其[Best(n-2)][B][P]的cost
+     * 3. ...(循环的次数受到h->param.i_bframe的限制，最多计算MIN( h->param.i_bframe+1, length )次)
+     * 4. 获取帧个数为1时的最优帧结构,记为Best(1)，在Best(1)和P之间插入n-2个B帧，计算其[Best(1)][B...B][P]的cost
+     * 5. 获取帧个数为0时的最优帧结构,记为Best(0)，在Best(0)和P之间插入n-1个B帧，计算其[Best(0)][B...B][P]的cost
+     * 6. 得到cost最小时的帧结构，保存在best_paths[length]中
+     */
     char paths[2][X264_LOOKAHEAD_MAX+1];
     int num_paths = X264_MIN( h->param.i_bframe+1, length );
     uint64_t best_cost = COST_MAX64;
     int best_possible = 0;
     int idx = 0;
 
+    log_trace("[lookahead][slicetype-path]length=%d,num_paths=%d", length, num_paths);
     /* Iterate over all currently possible paths */
     for( int path = 0; path < num_paths; path++ )
     {
@@ -1375,6 +1390,7 @@ static void slicetype_path( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **fra
         memset( paths[idx]+len, 'B', path );
         strcpy( paths[idx]+len+path, "P" );
 
+        log_trace("[lookahead][slicetype-path]len=%d,path=%d,paths[%d]=%s", len, path, idx, paths[idx]);
         int possible = 1;
         for( int i = 1; i <= length; i++ )
         {
@@ -1390,11 +1406,13 @@ static void slicetype_path( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **fra
             }
         }
 
+        log_trace("[lookahead][slicetype-path]possible=%d,paths[%d]=%s", possible, idx, paths[idx]);
         if( possible || !best_possible )
         {
             if( possible && !best_possible )
                 best_cost = COST_MAX64;
             /* Calculate the actual cost of the current path */
+            log_trace("[lookahead][slicetype-path]calculate cost of path[%d]:%s", idx, paths[idx]);
             uint64_t cost = slicetype_path_cost( h, a, frames, paths[idx], best_cost );
             if( cost < best_cost )
             {
@@ -1407,6 +1425,7 @@ static void slicetype_path( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **fra
 
     /* Store the best path. */
     memcpy( best_paths[length % (X264_BFRAME_MAX+1)], paths[idx^1], length );
+    log_trace("[lookahead][slicetype-path]best_paths[%d]=%s", length % (X264_BFRAME_MAX+1), best_paths[length % (X264_BFRAME_MAX+1)]);
 }
 
 static int scenecut_internal( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **frames, int p0, int p1, int real_scenecut )
@@ -1586,19 +1605,22 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
         {
             if( num_frames > 1 )
             {
+                // best_paths[0]=""代表待决策帧个数为0时的最优路径，best_paths[1]="P"代表待决策帧个数为1时的最优路径
                 char best_paths[X264_BFRAME_MAX+1][X264_LOOKAHEAD_MAX+1] = {"","P"};
                 int best_path_index = num_frames % (X264_BFRAME_MAX+1);
 
                 /* Perform the frametype analysis. */
-                for( int j = 2; j <= num_frames; j++ )
+                for( int j = 2; j <= num_frames; j++ ) {
+                    log_trace("[lookahead][analyse]trellis adaptive bframe,j=%d,num_frames=%d", j, num_frames);
                     slicetype_path( h, &a, frames, j, best_paths );
+                }
 
                 /* Load the results of the analysis into the frame types. */
                 for( int j = 1; j < num_frames; j++ )
                 {
                     if( best_paths[best_path_index][j-1] != 'B' )
                     {
-                        if( IS_X264_TYPE_AUTO_OR_B( frames[j]->i_type ) )
+                        if( IS_X264_TYPE_AUTO_OR_B( frames[j]->i_type ) ) // 防止覆盖I/IDR帧
                             frames[j]->i_type = X264_TYPE_P;
                     }
                     else
@@ -1640,7 +1662,7 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
                 }
 
                 int bframes = j - last_nonb - 1;
-                log_trace("[lookahead][analyse][fast]j=%d,last_nonb=%d", j, last_nonb);
+                log_trace("[lookahead][analyse]fast adaptive bframe,j=%d,last_nonb=%d", j, last_nonb);
 
                 memset( path, 'B', bframes );
                 strcpy( path+bframes, "PP" );
@@ -1648,9 +1670,9 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
                 strcpy( path+bframes, "BP" );
                 uint64_t cost_b = slicetype_path_cost( h, &a, frames+last_nonb, path, cost_p );
 
-                log_trace("[lookahead][analyse][fast]cost_p=%llu,cost_b=%llu", cost_p, cost_b);
+                log_trace("[lookahead][analyse]fast adaptive bframe,cost_p=%llu,cost_b=%llu", cost_p, cost_b);
                 if( cost_b < cost_p )
-                    frames[j  ]->i_type = X264_TYPE_B;
+                    frames[j]->i_type = X264_TYPE_B;
                 else
                     frames[j]->i_type = X264_TYPE_P;
             }
