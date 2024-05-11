@@ -1069,6 +1069,8 @@ static void macroblock_tree_propagate( x264_t *h, x264_frame_t **frames, float a
     x264_emms();
     float fps_factor = CLIP_DURATION(frames[b]->f_duration) / (CLIP_DURATION(average_duration) * 256.0f) * MBTREE_PRECISION;
 
+    log_trace("[lookahead][mb_tree]p0=%d,b=%d,p1=%d,referenced=%d,dist_scale_factor=%d,i_bipred_weight=%d,fps_factor=%f",
+        p0, b, p1, referenced, dist_scale_factor, i_bipred_weight, fps_factor);
     /* For non-reffed frames the source costs are always zero, so just memset one row and re-use it. */
     if( !referenced )
         memset( frames[b]->i_propagate_cost, 0, h->mb.i_mb_width * sizeof(uint16_t) );
@@ -1076,14 +1078,19 @@ static void macroblock_tree_propagate( x264_t *h, x264_frame_t **frames, float a
     for( h->mb.i_mb_y = 0; h->mb.i_mb_y < h->mb.i_mb_height; h->mb.i_mb_y++ )
     {
         int mb_index = h->mb.i_mb_y*h->mb.i_mb_stride;
+        // pure C： common/mc.c
+        // 计算frames[b]继承来自于p0和p1的遗传价值
         h->mc.mbtree_propagate_cost( buf, propagate_cost,
             frames[b]->i_intra_cost+mb_index, lowres_costs+mb_index,
             frames[b]->i_inv_qscale_factor+mb_index, &fps_factor, h->mb.i_mb_width );
         if( referenced )
             propagate_cost += h->mb.i_mb_width;
 
+        // pure C: common/mc.c
+        // 计算frames[p0]->i_propagate_cost：遗传给frames[b]的价值
         h->mc.mbtree_propagate_list( h, ref_costs[0], &mvs[0][mb_index], buf, &lowres_costs[mb_index],
                                      bipred_weights[0], h->mb.i_mb_y, h->mb.i_mb_width, 0 );
+        // 计算frames[p1]->i_propagate_cost：遗传给frames[b]的价值
         if( b != p1 )
         {
             h->mc.mbtree_propagate_list( h, ref_costs[1], &mvs[1][mb_index], buf, &lowres_costs[mb_index],
@@ -1116,6 +1123,7 @@ static void macroblock_tree( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **fr
         i--;
     last_nonb = i;
 
+    log_trace("[lookahead][mb_tree]num_frames=%d,b_intra=%d,last_nonb=%d", num_frames, b_intra, last_nonb);
     /* Lookaheadless MB-tree is not a theoretically distinct case; the same extrapolation could
      * be applied to the end of a lookahead buffer of any size.  However, it's most needed when
      * lookahead=0, so that's what's currently implemented. */
@@ -1137,11 +1145,12 @@ static void macroblock_tree( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **fr
         memset( frames[last_nonb]->i_propagate_cost, 0, h->mb.i_mb_count * sizeof(uint16_t) );
     }
 
-    while( i-- > idx )
+    while( i-- > idx ) // i是frames中最后一个非B帧; 当b_intra为0，idx是frames[0]，当b_intra为1，idx是frames[1]
     {
         cur_nonb = i;
         while( IS_X264_TYPE_B( frames[cur_nonb]->i_type ) && cur_nonb > 0 )
             cur_nonb--;
+        // cur_nonb为last_nonb前一个非B帧，也就是last_nonb的参考帧
         if( cur_nonb < idx )
             break;
         slicetype_frame_cost( h, a, frames, cur_nonb, last_nonb, last_nonb );
@@ -1159,22 +1168,23 @@ static void macroblock_tree( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **fr
                 if( i != middle )
                 {
                     slicetype_frame_cost( h, a, frames, p0, p1, i );
-                    macroblock_tree_propagate( h, frames, average_duration, p0, p1, i, 0 );
+                    macroblock_tree_propagate( h, frames, average_duration, p0, p1, i, 0 ); // 非参考B
                 }
                 i--;
             }
-            macroblock_tree_propagate( h, frames, average_duration, cur_nonb, last_nonb, middle, 1 );
+            macroblock_tree_propagate( h, frames, average_duration, cur_nonb, last_nonb, middle, 1 ); // 参考B
         }
         else
         {
             while( i > cur_nonb )
             {
                 slicetype_frame_cost( h, a, frames, cur_nonb, last_nonb, i );
-                macroblock_tree_propagate( h, frames, average_duration, cur_nonb, last_nonb, i, 0 );
+                macroblock_tree_propagate( h, frames, average_duration, cur_nonb, last_nonb, i, 0 ); // B
                 i--;
             }
         }
-        macroblock_tree_propagate( h, frames, average_duration, cur_nonb, last_nonb, last_nonb, 1 );
+
+        macroblock_tree_propagate( h, frames, average_duration, cur_nonb, last_nonb, last_nonb, 1 ); // P
         last_nonb = cur_nonb;
     }
 
@@ -1185,9 +1195,9 @@ static void macroblock_tree( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **fr
         XCHG( uint16_t*, frames[last_nonb]->i_propagate_cost, frames[0]->i_propagate_cost );
     }
 
-    macroblock_tree_finish( h, frames[last_nonb], average_duration, last_nonb );
+    macroblock_tree_finish( h, frames[last_nonb], average_duration, last_nonb ); // P
     if( h->param.i_bframe_pyramid && bframes > 1 && !h->param.rc.i_vbv_buffer_size )
-        macroblock_tree_finish( h, frames[last_nonb+(bframes+1)/2], average_duration, 0 );
+        macroblock_tree_finish( h, frames[last_nonb+(bframes+1)/2], average_duration, 0 ); // 参考B
 }
 
 static int vbv_frame_cost( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **frames, int p0, int p1, int b )

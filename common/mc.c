@@ -512,6 +512,7 @@ static void frame_init_lowres_core( pixel *src0, pixel *dst0, pixel *dsth, pixel
 
 /* Estimate the total amount of influence on future quality that could be had if we
  * were to improve the reference samples used to inter predict any given macroblock. */
+/// @brief 计算非参考B帧继承来自参考帧的遗传价值
 static void mbtree_propagate_cost( int16_t *dst, uint16_t *propagate_in, uint16_t *intra_costs,
                                    uint16_t *inter_costs, uint16_t *inv_qscales, float *fps_factor, int len )
 {
