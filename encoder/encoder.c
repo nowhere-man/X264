@@ -1859,7 +1859,12 @@ x264_t *x264_encoder_open( x264_param_t *param, void *api )
               profile, level, subsampling[CHROMA_FORMAT], BIT_DEPTH );
 
     timer_end(&h->timer.encoder_open);
+
     dfx_x264_param(&h->param);
+    dfx_x264_encoder_open(h);
+    dfx_x264_sps(h->sps);
+    dfx_x264_pps(h->pps);
+
     return h;
 fail:
     x264_free( h );

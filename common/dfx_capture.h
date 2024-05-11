@@ -4,5 +4,8 @@
 #include "x264.h"
 
 void dfx_x264_param(x264_param_t* param);
+void dfx_x264_encoder_open(struct x264_t* h);
+void dfx_x264_sps(x264_sps_t* sps);
+void dfx_x264_pps(x264_pps_t* pps);
 
 #endif
