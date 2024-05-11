@@ -123,6 +123,7 @@ void dfx_x264_param(x264_param_t* param)
 
 void dfx_x264_encoder_open(struct x264_t* h)
 {
+    log_debug("------------------------------------------encoder_open");
     log_debug("h->mb.i_mb_width=%d", h->mb.i_mb_width);
     log_debug("h->mb.i_mb_height=%d", h->mb.i_mb_height);
     log_debug("h->mb.i_mb_count=%d", h->mb.i_mb_count);
@@ -138,10 +139,12 @@ void dfx_x264_encoder_open(struct x264_t* h)
     log_debug("h->frames.b_have_sub8x8_esa=%d", h->frames.b_have_sub8x8_esa);
     log_debug("h->frames.i_last_idr=%d", h->frames.i_last_idr);
     log_debug("h->frames.i_last_keyframe=%d", h->frames.i_last_keyframe);
+    log_debug("------------------------------------------END");
 }
 
 void dfx_x264_sps(x264_sps_t* sps)
 {
+    log_debug("------------------------------------------sps");
     log_debug("i_id: %d", sps->i_id);
     log_debug("i_profile_idc: %d", sps->i_profile_idc);
     log_debug("i_level_idc: %d", sps->i_level_idc);
@@ -212,10 +215,12 @@ void dfx_x264_sps(x264_sps_t* sps)
     log_debug("b_avcintra_hd: %d", sps->b_avcintra_hd);
     log_debug("b_avcintra_4k: %d", sps->b_avcintra_4k);
     log_debug("i_cqm_preset: %d", sps->i_cqm_preset);
+    log_debug("------------------------------------------END");
 }
 
 void dfx_x264_pps(x264_pps_t* pps)
 {
+    log_debug("------------------------------------------pps");
     log_debug("i_id: %d", pps->i_id);
     log_debug("i_sps_id: %d", pps->i_sps_id);
     log_debug("b_cabac: %d", pps->b_cabac);
@@ -232,4 +237,5 @@ void dfx_x264_pps(x264_pps_t* pps)
     log_debug("b_constrained_intra_pred: %d", pps->b_constrained_intra_pred);
     log_debug("b_redundant_pic_cnt: %d", pps->b_redundant_pic_cnt);
     log_debug("b_transform_8x8_mode: %d", pps->b_transform_8x8_mode);
+    log_debug("------------------------------------------END");
 }
