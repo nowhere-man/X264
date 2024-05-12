@@ -108,8 +108,12 @@ typedef struct x264_frame
      * Doesn't need special addressing for intra cost because
      * lists_used is guaranteed to be zero in that cast. */
     uint16_t (*lowres_costs[X264_BFRAME_MAX+2][X264_BFRAME_MAX+2]);
-    #define LOWRES_COST_MASK ((1<<14)-1)
-    #define LOWRES_COST_SHIFT 14
+    // 将lowres_costs[mb_xy]的值限制在低14位
+    #define LOWRES_COST_MASK ((1<<14)-1) // 0011 1111 1111 1111
+
+    // 用来计算list_used = lowres_costs[mb_xy]>>LOWRES_COST_SHIFT
+    // list_used取值为00，01，10，11
+    #define LOWRES_COST_SHIFT 14         // 0100 0000 0000 0000
 
     int     *lowres_mv_costs[2][X264_BFRAME_MAX+1];
     int8_t  *ref[2];

@@ -1026,7 +1026,7 @@ static int slicetype_frame_cost_recalculate( x264_t *h, x264_frame_t **frames, i
                 i_score += i_mb_cost;
             }
         }
-    }
+    }  
     return i_score;
 }
 
@@ -1059,6 +1059,7 @@ static void macroblock_tree_propagate( x264_t *h, x264_frame_t **frames, float a
 {
     uint16_t *ref_costs[2] = {frames[p0]->i_propagate_cost,frames[p1]->i_propagate_cost};
     int dist_scale_factor = ( ((b-p0) << 8) + ((p1-p0) >> 1) ) / (p1-p0);
+    // frames[b]前向参考frames[p0]的距离因子，值越小权重越小
     int i_bipred_weight = h->param.analyse.b_weighted_bipred ? 64 - (dist_scale_factor>>2) : 32;
     int16_t (*mvs[2])[2] = { b != p0 ? frames[b]->lowres_mvs[0][b-p0-1] : NULL, b != p1 ? frames[b]->lowres_mvs[1][p1-b-1] : NULL };
     int bipred_weights[2] = {i_bipred_weight, 64 - i_bipred_weight};

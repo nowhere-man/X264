@@ -512,7 +512,7 @@ static void frame_init_lowres_core( pixel *src0, pixel *dst0, pixel *dsth, pixel
 
 /* Estimate the total amount of influence on future quality that could be had if we
  * were to improve the reference samples used to inter predict any given macroblock. */
-/// @brief 计算非参考B帧继承来自参考帧的遗传价值
+/// @brief 计算非参考B帧继承来自参考帧的遗传量
 static void mbtree_propagate_cost( int16_t *dst, uint16_t *propagate_in, uint16_t *intra_costs,
                                    uint16_t *inter_costs, uint16_t *inv_qscales, float *fps_factor, int len )
 {
@@ -529,6 +529,13 @@ static void mbtree_propagate_cost( int16_t *dst, uint16_t *propagate_in, uint16_
     }
 }
 
+/// @brief 将B帧继承自参考帧的遗传量转化为参考帧的遗传价值
+/// @param ref_costs frames[p]->i_propagate_cost
+/// @param propagate_amount 由mbtree_propagate_cost()计算得出
+/// @param bipred_weight 双向参考权重，由距离因子决定，B帧离参考帧越远，weight越大；单向参考的weight为0
+/// @param mb_y mb的行数索引
+/// @param len 一行的mb数
+/// @param list 0为前向参考，1为后向参考
 static void mbtree_propagate_list( x264_t *h, uint16_t *ref_costs, int16_t (*mvs)[2],
                                    int16_t *propagate_amount, uint16_t *lowres_costs,
                                    int bipred_weight, int mb_y, int len, int list )
@@ -539,6 +546,7 @@ static void mbtree_propagate_list( x264_t *h, uint16_t *ref_costs, int16_t (*mvs
 
     for( int i = 0; i < len; i++ )
     {
+        // intra_cost为标志位，前向参考为1，双向参考为3
         int lists_used = lowres_costs[i]>>LOWRES_COST_SHIFT;
 
         if( !(lists_used & (1 << list)) )
