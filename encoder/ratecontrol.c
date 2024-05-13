@@ -224,35 +224,57 @@ static inline double qscale2bits( ratecontrol_entry_t *rce, double qscale )
 
 static ALWAYS_INLINE uint32_t ac_energy_var( uint64_t sum_ssd, int shift, x264_frame_t *frame, int i, int b_store )
 {
+    // sum_ssd中低32位保存sum：当前宏块所有pixel的和
     uint32_t sum = sum_ssd;
+    // sum_ssd中高32位保存ssd：当前宏块所有pixel的平方和
     uint32_t ssd = sum_ssd >> 32;
     if( b_store )
     {
         frame->i_pixel_sum[i] += sum;
         frame->i_pixel_ssd[i] += ssd;
     }
+    /* luma的shift为8，chroma的shift为6
+     * 以luma块为例：
+     *     16x16宏块的每个像素值分别为a0,a1...,a255
+     *     pixel的平均avg = sum / 256
+     *     则方差var = [ (a0 - avg)^2 + ... (a255 - avg)^2 ] / 256
+     *    256 * var = (a0^2 + ...a255^2) + 256 * avg^2  - 2 * avg * (a0 + ... + a255)
+     *              = ssd + 256 * (sum / 256) ^2 - 2 * (sum / 256) * sum
+     *              = ssd + ( sum * sum ) / 256 - ( sum * sum ) / 128
+     *              = ssd - sum * sum / 256
+     *              = ssd - ( sum * sum ) >> 8
+    */
     return ssd - ((uint64_t)sum * sum >> shift);
 }
 
 static ALWAYS_INLINE uint32_t ac_energy_plane( x264_t *h, int mb_x, int mb_y, x264_frame_t *frame, int i, int b_chroma, int b_field, int b_store )
 {
+    // luma height = 16; chroma height = 8
     int height = b_chroma ? 16>>CHROMA_V_SHIFT : 16;
     int stride = frame->i_stride[i];
-    int offset = b_field
+    // offset为宏块的偏移量
+    int offset = b_field // 逐行编码的b_field=0
         ? 16 * mb_x + height * (mb_y&~1) * stride + (mb_y&1) * stride
         : 16 * mb_x + height * mb_y * stride;
     stride <<= b_field;
     if( b_chroma )
     {
         ALIGNED_ARRAY_64( pixel, pix,[FENC_STRIDE*16] );
+        // YUV420的chromapix为8，详见x264_luma2chroma_pixel数组
         int chromapix = h->luma2chroma_pixel[PIXEL_16x16];
+        // shift为6
         int shift = 7 - CHROMA_V_SHIFT;
 
+        // pure C: mc.c/x264_plane_copy_deinterleave_c()
+        // 将frame->plane[1]和frame->plane[2]复制到pix的左半部分和右半部分
         h->mc.load_deinterleave_chroma_fenc( pix, frame->plane[1] + offset, stride, height );
+        // h->pixf.var的C实现：pixel.c/pixel_var_8x8
         return ac_energy_var( h->pixf.var[chromapix]( pix,               FENC_STRIDE ), shift, frame, 1, b_store )
              + ac_energy_var( h->pixf.var[chromapix]( pix+FENC_STRIDE/2, FENC_STRIDE ), shift, frame, 2, b_store );
     }
     else
+        // h->pixf.var的C实现：pixel.c/pixel_var_16x16
+        // i = 0
         return ac_energy_var( h->pixf.var[PIXEL_16x16]( frame->plane[i] + offset, stride ), 8, frame, i, b_store );
 }
 
@@ -288,7 +310,9 @@ static NOINLINE uint32_t ac_energy_mb( x264_t *h, int mb_x, int mb_y, x264_frame
     }
     else
     {
+        // luma
         var  = ac_energy_plane( h, mb_x, mb_y, frame, 0, 0, PARAM_INTERLACED, 1 );
+        // chroma
         if( CHROMA444 )
         {
             var += ac_energy_plane( h, mb_x, mb_y, frame, 1, 0, PARAM_INTERLACED, 1 );
@@ -363,6 +387,7 @@ void x264_adaptive_quant_frame( x264_t *h, x264_frame_t *frame, float *quant_off
             for( int mb_y = 0; mb_y < h->mb.i_mb_height; mb_y++ )
                 for( int mb_x = 0; mb_x < h->mb.i_mb_width; mb_x++ )
                 {
+                    // 计算当前宏块的方差
                     uint32_t energy = ac_energy_mb( h, mb_x, mb_y, frame );
                     float qp_adj = powf( energy * bit_depth_correction + 1, 0.125f );
                     frame->f_qp_offset[mb_x + mb_y*h->mb.i_mb_stride] = qp_adj;
@@ -410,10 +435,24 @@ void x264_adaptive_quant_frame( x264_t *h, x264_frame_t *frame, float *quant_off
     /* Remove mean from SSD calculation */
     for( int i = 0; i < 3; i++ )
     {
+        // ssd为当前帧所有pixel的值的平方和
         uint64_t ssd = frame->i_pixel_ssd[i];
+        // sum为当前帧所有pixel的值的和
         uint64_t sum = frame->i_pixel_sum[i];
         int width  = 16*h->mb.i_mb_width  >> (i && CHROMA_H_SHIFT);
         int height = 16*h->mb.i_mb_height >> (i && CHROMA_V_SHIFT);
+        /* 当前帧像素个数cnt = width * height
+         * 以luma分量为例,宏块的16个像素之和记为a(0)...a(cnt-1)
+         * 平均avg = sum / cnt
+         * 当前帧的luma分量的方差var = { [a(0) - avg]^2 + ... + [a(cnt-1) - avg]^2 } / cnt
+         *              cnt * var = { [a(0)^2 + ... + a(cnt-1)^2] + cnt * avg^2 - 2 * avg * [a(0) + ... + a(cnt-1)] }
+         *                        = ssd + cnt * (sum / cnt)^2 - 2 * (sum / cnt ) * sum
+         *                        = ssd + ( sum * sum / cnt ) - 2 * ( sum * sum / cnt )
+         *                        = ssd - ( sum * sum / cnt )
+         * 简化下式得：frame->i_pixel_ssd[i] = ssd - [(sum * sum) / (width * height) + 0.5]
+         * 这里加了0.5可能是为了四舍五入取整
+         */
+        // 当前帧的每个分量的方差
         frame->i_pixel_ssd[i] = ssd - (sum * sum + width * height / 2) / (width * height);
     }
 
