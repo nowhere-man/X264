@@ -254,6 +254,10 @@ void x264_lookahead_get_frames( x264_t *h )
         int shift_frames = h->lookahead->next.list[0]->i_bframes + 1;
         lookahead_shift( &h->lookahead->ofbuf, &h->lookahead->next, shift_frames );
 
+        for (size_t i = 0; i < h->lookahead->ofbuf.i_size; i++) {
+            log_trace("[lookahead]finished,h->lookahead->ofbuf.list[%d]->i_pts=%d,h->lookahead->ofbuf.list[%d]->i_type=%d",
+                      i, h->lookahead->ofbuf.list[i]->i_pts, i, h->lookahead->ofbuf.list[i]->i_type);
+        }
         /* For MB-tree and VBV lookahead, we have to perform propagation analysis on I-frames too. */
         if( h->lookahead->b_analyse_keyframe && IS_X264_TYPE_I( h->lookahead->last_nonb->i_type ) )
             x264_slicetype_analyse( h, shift_frames );

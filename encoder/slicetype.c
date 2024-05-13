@@ -1040,6 +1040,8 @@ static void macroblock_tree_finish( x264_t *h, x264_frame_t *frame, float averag
     if( ref0_distance && frame->f_weighted_cost_delta[ref0_distance-1] > 0 )
         weightdelta = (1.0 - frame->f_weighted_cost_delta[ref0_distance-1]);
 
+    log_trace("[lookahead][mb_tree]finish,frame->i_pts=%d,frame->i_type=%d,ref0_distance=%d,avg_duration=%f",
+        frame->i_pts, frame->i_type, ref0_distance, average_duration);
     /* Allow the strength to be adjusted via qcompress, since the two
      * concepts are very similar. */
     float strength = 5.0f * (1.0f - h->param.rc.f_qcompress);
@@ -1196,7 +1198,7 @@ static void macroblock_tree( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **fr
         XCHG( uint16_t*, frames[last_nonb]->i_propagate_cost, frames[0]->i_propagate_cost );
     }
 
-    macroblock_tree_finish( h, frames[last_nonb], average_duration, last_nonb ); // P
+    macroblock_tree_finish( h, frames[last_nonb], average_duration, last_nonb ); // cur_nonb
     if( h->param.i_bframe_pyramid && bframes > 1 && !h->param.rc.i_vbv_buffer_size )
         macroblock_tree_finish( h, frames[last_nonb+(bframes+1)/2], average_duration, 0 ); // 参考B
 }
@@ -1822,7 +1824,7 @@ void x264_slicetype_decide( x264_t *h )
 
     int lookahead_size = h->lookahead->next.i_size;
     for (size_t i = 0; i < lookahead_size; i++) {
-        log_trace("[lookahead][decide]h->lookahead->next.list[%d]->i_pts=%d,", i, h->lookahead->next.list[i]->i_pts);
+        log_trace("[lookahead][decide]begin,h->lookahead->next.list[%d]->i_pts=%d", i, h->lookahead->next.list[i]->i_pts);
     }
 
     for( int i = 0; i < h->lookahead->next.i_size; i++ )
