@@ -21,7 +21,13 @@ void log_time(x264_time_t* time)
     log_info("Encoder encode time: %.2f ms", time->encoder_encode.total.duration);
     log_info("  Adaptive quant time: %.2f ms", time->encoder_encode.aq.duration);
     log_info("  Lowres init time: %.2f ms", time->encoder_encode.lower_res_init.duration);
-    log_info("  Lookahead time: %.2f ms", time->encoder_encode.lookahead.duration);
+    log_info("  Lookahead time: %.2f ms", time->encoder_encode.lookahead.total.duration);
+    log_info("    Frame type decision time: %.2f ms", time->encoder_encode.lookahead.frame_type_decide.duration);
+    log_info("    Scenecut time: %.2f ms", time->encoder_encode.lookahead.scenecut.duration);
+    log_info("    Mb tree time: %.2f ms", time->encoder_encode.lookahead.mb_tree.duration);
+    log_info("    Vbv lookahead time: %.2f ms", time->encoder_encode.lookahead.vbv_lookahead.duration);
+    log_info("    Rc analysis time: %.2f ms", time->encoder_encode.lookahead.rc_analyse.duration);
+    log_info("    WeightP time: %.2f ms", time->encoder_encode.lookahead.weightp.duration);
     log_info("  Build ref list time: %.2f ms", time->encoder_encode.build_ref_list.duration);
     log_info("  Ratecontrol time: %.2f ms", time->encoder_encode.ratecontrol.duration);
     log_info("  Mb analysis time: %.2f ms", time->encoder_encode.mb_analyse.total.duration);

@@ -14,7 +14,15 @@ typedef struct {
         x264_clock_t total;
         x264_clock_t aq;
         x264_clock_t lower_res_init;
-        x264_clock_t lookahead;
+        struct {
+            x264_clock_t total;
+            x264_clock_t frame_type_decide;
+            x264_clock_t scenecut;
+            x264_clock_t mb_tree;
+            x264_clock_t vbv_lookahead;
+            x264_clock_t rc_analyse;
+            x264_clock_t weightp;
+        } lookahead;
         x264_clock_t build_ref_list;
         x264_clock_t ratecontrol;
         struct {

@@ -284,6 +284,8 @@ static NOINLINE unsigned int weight_cost_chroma444( x264_t *h, x264_frame_t *fen
 
 void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int b_lookahead )
 {
+    timer_start(&h->timer.encoder_encode.lookahead.weightp);
+
     int i_delta_index = fenc->i_frame - ref->i_frame - 1;
     /* epsilon is chosen to require at least a numerator of 127 (with denominator = 128) */
     const float epsilon = 1.f/128.f;
@@ -499,6 +501,8 @@ void x264_weights_analyse( x264_t *h, x264_frame_t *fenc, x264_frame_t *ref, int
                                  width, height, &weights[0] );
         fenc->weighted[0] = h->mb.p_weight_buf[0] + PADH_ALIGN + ref->i_stride_lowres * PADV;
     }
+
+    timer_end(&h->timer.encoder_encode.lookahead.weightp);
 }
 
 /* Output buffers are separated by 128 bytes to avoid false sharing of cachelines
@@ -1107,6 +1111,8 @@ static void macroblock_tree_propagate( x264_t *h, x264_frame_t **frames, float a
 
 static void macroblock_tree( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **frames, int num_frames, int b_intra )
 {
+    timer_start(&h->timer.encoder_encode.lookahead.mb_tree);
+
     int idx = !b_intra;
     int last_nonb, cur_nonb = 1;
     int bframes = 0;
@@ -1201,6 +1207,8 @@ static void macroblock_tree( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **fr
     macroblock_tree_finish( h, frames[last_nonb], average_duration, last_nonb ); // cur_nonb
     if( h->param.i_bframe_pyramid && bframes > 1 && !h->param.rc.i_vbv_buffer_size )
         macroblock_tree_finish( h, frames[last_nonb+(bframes+1)/2], average_duration, 0 ); // 参考B
+
+    timer_end(&h->timer.encoder_encode.lookahead.mb_tree);
 }
 
 static int vbv_frame_cost( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **frames, int p0, int p1, int b )
@@ -1244,6 +1252,8 @@ static void calculate_durations( x264_t *h, x264_frame_t *cur_frame, x264_frame_
 
 static void vbv_lookahead( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **frames, int num_frames, int keyframe )
 {
+    timer_start(&h->timer.encoder_encode.lookahead.vbv_lookahead);
+
     int last_nonb = 0, cur_nonb = 1, idx = 0;
     x264_frame_t *prev_frame = NULL;
     int prev_frame_idx = 0;
@@ -1303,6 +1313,8 @@ static void vbv_lookahead( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **fram
             cur_nonb++;
     }
     frames[next_nonb]->i_planned_type[idx] = X264_TYPE_AUTO;
+
+    timer_end(&h->timer.encoder_encode.lookahead.vbv_lookahead);
 }
 
 /// @brief 计算给定帧结构[cur_nonb][path]的cost
@@ -1484,11 +1496,15 @@ static int scenecut_internal( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **f
                   icost, pcost, 1. - (double)pcost / icost,
                   f_bias, i_gop_size, imb, pmb );
     }
+
+    timer_end(&h->timer.encoder_encode.lookahead.scenecut);
     return res;
 }
 
 static int scenecut( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **frames, int p0, int p1, int real_scenecut, int num_frames, int i_max_search )
 {
+    timer_start(&h->timer.encoder_encode.lookahead.scenecut);
+
     /* Only do analysis during a normal scenecut check. */
     if( real_scenecut && h->param.i_bframe )
     {
@@ -1573,6 +1589,8 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
      * there will be significant visual artifacts if the frames just before
      * go down in quality due to being referenced less, despite it being
      * more RD-optimal. */
+    timer_start(&h->timer.encoder_encode.lookahead.frame_type_decide);
+
     if( (h->param.analyse.b_psy && h->param.rc.b_mb_tree) || b_vbv_lookahead )
         num_frames = framecnt;
     else if( h->param.b_open_gop && num_frames < framecnt )
@@ -1580,6 +1598,7 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
     else if( num_frames == 0 )
     {
         frames[1]->i_type = X264_TYPE_I;
+        timer_end(&h->timer.encoder_encode.lookahead.frame_type_decide);
         return;
     }
 
@@ -1588,6 +1607,7 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
     {
         if( frames[1]->i_type == X264_TYPE_AUTO )
             frames[1]->i_type = X264_TYPE_I;
+        timer_end(&h->timer.encoder_encode.lookahead.frame_type_decide);
         return;
     }
 
@@ -1741,6 +1761,7 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
                 frames[j]->i_type = X264_TYPE_P;
         reset_start = !keyframe + 1;
     }
+    timer_end(&h->timer.encoder_encode.lookahead.frame_type_decide);
 
     /* Perform the actual macroblock tree analysis.
      * Don't go farther than the maximum keyframe interval; this helps in short GOPs. */
@@ -1748,6 +1769,7 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
         macroblock_tree( h, &a, frames, X264_MIN(num_frames, h->param.i_keyint_max), keyframe );
 
     /* Enforce keyframe limit. */
+    timer_start(&h->timer.encoder_encode.lookahead.frame_type_decide);
     if( !h->param.b_intra_refresh )
     {
         int last_keyframe = h->lookahead->i_last_keyframe;
@@ -1799,6 +1821,7 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
             }
         }
     }
+    timer_end(&h->timer.encoder_encode.lookahead.frame_type_decide);
 
     if( b_vbv_lookahead )
         vbv_lookahead( h, &a, frames, num_frames, keyframe );
@@ -1869,6 +1892,7 @@ void x264_slicetype_decide( x264_t *h )
              || (h->param.rc.i_vbv_buffer_size && h->param.rc.i_lookahead) )
         x264_slicetype_analyse( h, 0 );
 
+    timer_start(&h->timer.encoder_encode.lookahead.frame_type_decide);
     for( bframes = 0, brefs = 0;; bframes++ )
     {
         frm = h->lookahead->next.list[bframes];
@@ -1967,10 +1991,12 @@ void x264_slicetype_decide( x264_t *h )
         h->lookahead->next.list[(bframes-1)/2]->i_type = X264_TYPE_BREF;
         brefs++;
     }
+    timer_end(&h->timer.encoder_encode.lookahead.frame_type_decide);
 
     /* calculate the frame costs ahead of time for x264_rc_analyse_slice while we still have lowres */
     if( h->param.rc.i_rc_method != X264_RC_CQP )
     {
+        timer_start(&h->timer.encoder_encode.lookahead.rc_analyse);
         x264_mb_analysis_t a;
         int p0, p1, b;
         p1 = b = bframes + 1;
@@ -2005,6 +2031,7 @@ void x264_slicetype_decide( x264_t *h )
                     p0 = b;
             }
         }
+        timer_end(&h->timer.encoder_encode.lookahead.rc_analyse);
     }
 
     /* Analyse for weighted P frames */

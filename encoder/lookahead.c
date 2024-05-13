@@ -230,7 +230,7 @@ static void lookahead_encoder_shift( x264_t *h )
 
 void x264_lookahead_get_frames( x264_t *h )
 {
-    timer_start(&h->timer.encoder_encode.lookahead);
+    timer_start(&h->timer.encoder_encode.lookahead.total);
 
     if( h->param.i_sync_lookahead )
     {   /* We have a lookahead thread, so get frames from there */
@@ -244,7 +244,7 @@ void x264_lookahead_get_frames( x264_t *h )
     {   /* We are not running a lookahead thread, so perform all the slicetype decide on the fly */
 
         if( h->frames.current[0] || !h->lookahead->next.i_size ) {
-            timer_end(&h->timer.encoder_encode.lookahead);
+            timer_end(&h->timer.encoder_encode.lookahead.total);
             log_trace("[lookahead]h->frames.current[0] is not null or h->lookahead->next.i_size == 0");
             return;
         }
@@ -265,5 +265,5 @@ void x264_lookahead_get_frames( x264_t *h )
         lookahead_encoder_shift( h );
     }
 
-    timer_end(&h->timer.encoder_encode.lookahead);
+    timer_end(&h->timer.encoder_encode.lookahead.total);
 }
