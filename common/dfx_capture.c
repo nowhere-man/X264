@@ -3,6 +3,7 @@
 #include "common/common.h"
 #include "common/log.h"
 #include "common/set.h"
+#include "encoder/ratecontrol.h"
 
 void dfx_x264_param(x264_param_t* param)
 {
@@ -234,5 +235,83 @@ void dfx_x264_pps(x264_pps_t* pps)
     log_debug("b_constrained_intra_pred: %d", pps->b_constrained_intra_pred);
     log_debug("b_redundant_pic_cnt: %d", pps->b_redundant_pic_cnt);
     log_debug("b_transform_8x8_mode: %d", pps->b_transform_8x8_mode);
+}
+
+void dfx_x264_rc_init(x264_ratecontrol_t* rc)
+{
+    log_debug("------------------------------------------ratecontrol");
+    log_debug("b_abr: %d", rc->b_abr);
+    log_debug("b_2pass: %d", rc->b_2pass);
+    log_debug("b_vbv: %d", rc->b_vbv);
+    log_debug("b_vbv_min_rate: %d", rc->b_vbv_min_rate);
+    log_debug("fps: %f", rc->fps);
+    log_debug("bitrate: %f", rc->bitrate);
+    log_debug("rate_tolerance: %f", rc->rate_tolerance);
+    log_debug("qcompress: %f", rc->qcompress);
+    log_debug("nmb: %d", rc->nmb);
+    log_debug("qp_constant[0]: %d", rc->qp_constant[0]);
+    log_debug("qp_constant[1]: %d", rc->qp_constant[1]);
+    log_debug("qp_constant[2]: %d", rc->qp_constant[2]);
+
+    log_debug("qpm: %f", rc->qpm);
+    log_debug("qpa_rc: %f", rc->qpa_rc);
+    log_debug("qpa_rc_prev: %f", rc->qpa_rc_prev);
+    log_debug("qpa_aq: %d", rc->qpa_aq);
+    log_debug("qpa_aq_prev: %d", rc->qpa_aq_prev);
+    log_debug("qp_novbv: %f", rc->qp_novbv);
+
+    log_debug("buffer_size: %f", rc->buffer_size);
+    log_debug("buffer_fill_final: %lld", (long long)rc->buffer_fill_final);
+    log_debug("buffer_fill_final_min: %lld", (long long)rc->buffer_fill_final_min);
+    log_debug("buffer_fill: %f", rc->buffer_fill);
+    log_debug("buffer_rate: %f", rc->buffer_rate);
+    log_debug("vbv_max_rate: %f", rc->vbv_max_rate);
+    log_debug("single_frame_vbv: %d", rc->single_frame_vbv);
+    log_debug("rate_factor_max_increment: %f", rc->rate_factor_max_increment);
+
+    log_debug("last_satd: %d", rc->last_satd);
+    log_debug("last_rceq: %f", rc->last_rceq);
+    log_debug("cplxr_sum: %f", rc->cplxr_sum);
+    log_debug("expected_bits_sum: %f", rc->expected_bits_sum);
+    log_debug("filler_bits_sum: %lld", (long long)rc->filler_bits_sum);
+    log_debug("wanted_bits_window: %f", rc->wanted_bits_window);
+    log_debug("cbr_decay: %f", rc->cbr_decay);
+    log_debug("short_term_cplxsum: %f", rc->short_term_cplxsum);
+    log_debug("short_term_cplxcount: %f", rc->short_term_cplxcount);
+    log_debug("rate_factor_constant: %f", rc->rate_factor_constant);
+    log_debug("ip_offset: %f", rc->ip_offset);
+    log_debug("pb_offset: %f", rc->pb_offset);
+
+    log_debug("last_qscale: %f", rc->last_qscale);
+    log_debug("last_qscale_for[0]: %f", rc->last_qscale_for[0]);
+    log_debug("last_qscale_for[1]: %f", rc->last_qscale_for[1]);
+    log_debug("last_qscale_for[2]: %f", rc->last_qscale_for[2]);
+    log_debug("last_non_b_pict_type: %d", rc->last_non_b_pict_type);
+    log_debug("accum_p_qp: %f", rc->accum_p_qp);
+    log_debug("accum_p_norm: %f", rc->accum_p_norm);
+    log_debug("last_accum_p_norm: %f", rc->last_accum_p_norm);
+    log_debug("lmin[0]: %f", rc->lmin[0]);
+    log_debug("lmin[1]: %f", rc->lmin[1]);
+    log_debug("lmin[2]: %f", rc->lmin[2]);
+    log_debug("lmax[0]: %f", rc->lmax[0]);
+    log_debug("lmax[1]: %f", rc->lmax[1]);
+    log_debug("lmax[2]: %f", rc->lmax[2]);
+    log_debug("lstep: %f", rc->lstep);
+
+    log_debug("mbtree.qpbuf_pos: %d", rc->mbtree.qpbuf_pos);
+    log_debug("mbtree.src_mb_count: %d", rc->mbtree.src_mb_count);
+    log_debug("mbtree.rescale_enabled: %d", rc->mbtree.rescale_enabled);
+    log_debug("mbtree.filtersize[0]: %d", rc->mbtree.filtersize[0]);
+    log_debug("mbtree.filtersize[1]: %d", rc->mbtree.filtersize[1]);
+    log_debug("mbtree.srcdim[0]: %d", rc->mbtree.srcdim[0]);
+    log_debug("mbtree.srcdim[1]: %d", rc->mbtree.srcdim[1]);
+
+    log_debug("frame_size_estimated: %f", rc->frame_size_estimated);
+    log_debug("bits_so_far: %f", rc->bits_so_far);
+    log_debug("frame_size_maximum: %f", rc->frame_size_maximum);
+    log_debug("frame_size_planned: %f", rc->frame_size_planned);
+    log_debug("slice_size_planned: %f", rc->slice_size_planned);
+    log_debug("bframes: %d", rc->bframes);
+    log_debug("bframe_bits: %d", rc->bframe_bits);
     log_debug("------------------------------------------END");
 }
