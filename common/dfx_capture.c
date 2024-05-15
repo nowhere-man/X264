@@ -237,7 +237,7 @@ void dfx_x264_pps(x264_pps_t* pps)
     log_debug("b_transform_8x8_mode: %d", pps->b_transform_8x8_mode);
 }
 
-void dfx_x264_rc_init(x264_ratecontrol_t* rc)
+void dfx_x264_rc_new(x264_ratecontrol_t* rc)
 {
     log_debug("------------------------------------------ratecontrol");
     log_debug("b_abr: %d", rc->b_abr);

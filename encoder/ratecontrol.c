@@ -1396,6 +1396,8 @@ void x264_ratecontrol_start( x264_t *h, int i_force_qp, int overhead )
     if( h->sh.i_type != SLICE_TYPE_B )
         rc->bframes = h->fenc->i_bframes;
 
+    log_trace("[rc][start]i_force_qp=%d,overhead=%d,rc->buffer_rate=%f,rc->buffer_fill=%f", i_force_qp, overhead, rc->buffer_rate, rc->buffer_fill);
+
     if( rc->b_abr )
     {
         q = qscale2qp( rate_estimate_qscale( h ) );
@@ -1912,6 +1914,8 @@ static double get_qscale(x264_t *h, ratecontrol_entry_t *rce, double rate_factor
     if( h->param.rc.b_mb_tree )
     {
         double timescale = (double)h->sps->vui.i_num_units_in_tick / h->sps->vui.i_time_scale;
+        log_trace("[rc][start][qscale]BASE_FRAME_DURATION=%f,CLIP_DURATION=%f,rce->i_duration=%d,timescale=%f,f_qcompress=%f",
+            BASE_FRAME_DURATION, CLIP_DURATION(rce->i_duration * timescale), rce->i_duration, timescale, h->param.rc.f_qcompress);
         q = pow( BASE_FRAME_DURATION / CLIP_DURATION(rce->i_duration * timescale), 1 - h->param.rc.f_qcompress );
     }
     else
@@ -1925,7 +1929,10 @@ static double get_qscale(x264_t *h, ratecontrol_entry_t *rce, double rate_factor
         rcc->last_rceq = q;
         q /= rate_factor;
         rcc->last_qscale = q;
+        log_trace("[rc][start][qscale]rcc->last_rceq:%f,rcc->last_qscale:%f", rcc->last_rceq, rcc->last_qscale);
     }
+
+    log_trace("[rc][start][qscale]fenc->i_frame:%d,rate_factor:%f,qscale:%f", frame_num, q, rate_factor);
 
     if( zone )
     {
@@ -2476,6 +2483,9 @@ static float rate_estimate_qscale( x264_t *h )
             rce.pict_type = pict_type;
             rce.i_duration = h->fenc->i_duration;
 
+            log_trace("[rc][start]pict_type=%d,total_bits=%lld,rcc->last_satd=%d,rcc->short_term_cplxsum=%f,rcc->short_term_cplxcount=%f",
+                pict_type, total_bits, rcc->last_satd, rcc->short_term_cplxsum, rcc->short_term_cplxcount);
+
             if( h->param.rc.i_rc_method == X264_RC_CRF )
             {
                 q = get_qscale( h, &rce, rcc->rate_factor_constant, h->fenc->i_frame );
@@ -2500,6 +2510,8 @@ static float rate_estimate_qscale( x264_t *h )
                         overflow = x264_clip3f( 1.0 + (predicted_bits - wanted_bits) / abr_buffer, .5, 2 );
                         q *= overflow;
                     }
+                    log_trace("[rc][start]iframe_done=%d,time_done=%f,wanted_bits=%f,abr_buffer=%f,overflow=%f,qscale=%f",
+                        i_frame_done, time_done, wanted_bits, abr_buffer, overflow, q);
                 }
             }
 
@@ -2509,6 +2521,8 @@ static float rate_estimate_qscale( x264_t *h )
             {
                 q = qp2qscale( rcc->accum_p_qp / rcc->accum_p_norm );
                 q /= h->param.rc.f_ip_factor;
+                log_trace("[rc][start]fenc->i_frame=%d,rcc->accum_p_qp=%f,rcc->accum_p_norm=%f,qscale=%f",
+                    h->fenc->i_frame, rcc->accum_p_qp, rcc->accum_p_norm, q);
             }
             else if( h->i_frame > 0 )
             {
@@ -2524,6 +2538,7 @@ static float rate_estimate_qscale( x264_t *h )
                         lmin /= rcc->lstep;
 
                     q = x264_clip3f(q, lmin, lmax);
+                    log_trace("[rc][start]h->i_frame=%d,lmin=%f,lmax=%f,qscale=%f", h->i_frame, lmin, lmax, q);
                 }
             }
             else if( h->param.rc.i_rc_method == X264_RC_CRF && rcc->qcompress != 1 )

@@ -1864,7 +1864,7 @@ x264_t *x264_encoder_open( x264_param_t *param, void *api )
     dfx_x264_encoder_open(h);
     dfx_x264_sps(h->sps);
     dfx_x264_pps(h->pps);
-    dfx_x264_rc_init(h->rc);
+    dfx_x264_rc_new(h->rc);
 
     return h;
 fail:
