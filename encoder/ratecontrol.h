@@ -39,6 +39,152 @@
 
 #define CLIP_DURATION(f) x264_clip3f(f,MIN_FRAME_DURATION,MAX_FRAME_DURATION)
 
+
+typedef struct
+{
+    int pict_type;
+    int frame_type;
+    int kept_as_ref;
+    double qscale;
+    int mv_bits;
+    int tex_bits;
+    int misc_bits;
+    double expected_bits; /* total expected bits up to the current frame (current one excluded) */
+    double expected_vbv;
+    double new_qscale;
+    float new_qp;
+    int i_count;
+    int p_count;
+    int s_count;
+    float blurred_complexity;
+    char direct_mode;
+    int16_t weight[3][2];
+    int16_t i_weight_denom[2];
+    int refcount[16];
+    int refs;
+    int64_t i_duration;
+    int64_t i_cpb_duration;
+    int out_num;
+} ratecontrol_entry_t;
+
+typedef struct
+{
+    float coeff_min;
+    float coeff;
+    float count;
+    float decay;
+    float offset;
+} predictor_t;
+
+struct x264_ratecontrol_t
+{
+    /* constants */
+    int b_abr;
+    int b_2pass;
+    int b_vbv;
+    int b_vbv_min_rate;
+    double fps;
+    double bitrate;
+    double rate_tolerance;
+    double qcompress;
+    int nmb;                    /* number of macroblocks in a frame */
+    int qp_constant[3];
+
+    /* current frame */
+    ratecontrol_entry_t *rce;
+    float qpm;                  /* qp for current macroblock: precise float for AQ */
+    float qpa_rc;               /* average of macroblocks' qp before aq */
+    float qpa_rc_prev;
+    int   qpa_aq;               /* average of macroblocks' qp after aq */
+    int   qpa_aq_prev;
+    float qp_novbv;             /* QP for the current frame if 1-pass VBV was disabled. */
+
+    /* VBV stuff */
+    double buffer_size;
+    int64_t buffer_fill_final;
+    int64_t buffer_fill_final_min;
+    double buffer_fill;         /* planned buffer, if all in-progress frames hit their bit budget */
+    double buffer_rate;         /* # of bits added to buffer_fill after each frame */
+    double vbv_max_rate;        /* # of bits added to buffer_fill per second */
+    predictor_t *pred;          /* predict frame size from satd */
+    int single_frame_vbv;
+    float rate_factor_max_increment; /* Don't allow RF above (CRF + this value). */
+
+    /* ABR stuff */
+    int    last_satd;
+    double last_rceq;
+    double cplxr_sum;           /* sum of bits*qscale/rceq */
+    double expected_bits_sum;   /* sum of qscale2bits after rceq, ratefactor, and overflow, only includes finished frames */
+    int64_t filler_bits_sum;    /* sum in bits of finished frames' filler data */
+    double wanted_bits_window;  /* target bitrate * window */
+    double cbr_decay;
+    double short_term_cplxsum;
+    double short_term_cplxcount;
+    double rate_factor_constant;
+    double ip_offset;
+    double pb_offset;
+
+    /* 2pass stuff */
+    FILE *p_stat_file_out;
+    char *psz_stat_file_tmpname;
+    FILE *p_mbtree_stat_file_out;
+    char *psz_mbtree_stat_file_tmpname;
+    char *psz_mbtree_stat_file_name;
+    FILE *p_mbtree_stat_file_in;
+
+    int num_entries;            /* number of ratecontrol_entry_ts */
+    ratecontrol_entry_t *entry; /* FIXME: copy needed data and free this once init is done */
+    ratecontrol_entry_t **entry_out;
+    double last_qscale;
+    double last_qscale_for[3];  /* last qscale for a specific pict type, used for max_diff & ipb factor stuff */
+    int last_non_b_pict_type;
+    double accum_p_qp;          /* for determining I-frame quant */
+    double accum_p_norm;
+    double last_accum_p_norm;
+    double lmin[3];             /* min qscale by frame type */
+    double lmax[3];
+    double lstep;               /* max change (multiply) in qscale per frame */
+    struct
+    {
+        uint16_t *qp_buffer[2]; /* Global buffers for converting MB-tree quantizer data. */
+        int qpbuf_pos;          /* In order to handle pyramid reordering, QP buffer acts as a stack.
+                                 * This value is the current position (0 or 1). */
+        int src_mb_count;
+
+        /* For rescaling */
+        int rescale_enabled;
+        float *scale_buffer[2]; /* Intermediate buffers */
+        int filtersize[2];      /* filter size (H/V) */
+        float *coeffs[2];
+        int *pos[2];
+        int srcdim[2];          /* Source dimensions (W/H) */
+    } mbtree;
+
+    /* MBRC stuff */
+    volatile float frame_size_estimated; /* Access to this variable must be atomic: double is
+                                          * not atomic on all arches we care about */
+    volatile float bits_so_far;
+    double frame_size_maximum;  /* Maximum frame size due to MinCR */
+    double frame_size_planned;
+    double slice_size_planned;
+    predictor_t *row_pred;
+    predictor_t row_preds[3][2];
+    predictor_t *pred_b_from_p; /* predict B-frame size from P-frame satd */
+    int bframes;                /* # consecutive B-frames before this P-frame */
+    int bframe_bits;            /* total cost of those frames */
+
+    int i_zones;
+    x264_zone_t *zones;
+    x264_zone_t *prev_zone;
+
+    /* hrd stuff */
+    int initial_cpb_removal_delay;
+    int initial_cpb_removal_delay_offset;
+    double nrt_first_access_unit; /* nominal removal time */
+    double previous_cpb_final_arrival_time;
+    uint64_t hrd_multiply_denom;
+};
+
 #define x264_ratecontrol_new x264_template(ratecontrol_new)
 int  x264_ratecontrol_new   ( x264_t * );
 #define x264_ratecontrol_delete x264_template(ratecontrol_delete)
