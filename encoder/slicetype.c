@@ -2132,5 +2132,7 @@ int x264_rc_analyse_slice( x264_t *h )
         }
     }
 
+    log_trace("[lookahead][last_satd]p0=%d,b=%d,p1=%d,frames[b]->i_frame=%d,frames[b]->i_type,cost=%d",
+        p0, b, p1, frames[b]->i_frame, frames[b]->i_type, cost);
     return cost;
 }

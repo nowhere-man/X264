@@ -1396,7 +1396,7 @@ void x264_ratecontrol_start( x264_t *h, int i_force_qp, int overhead )
     if( h->sh.i_type != SLICE_TYPE_B )
         rc->bframes = h->fenc->i_bframes;
 
-    log_trace("[rc][start]i_force_qp=%d,overhead=%d,rc->buffer_rate=%f,rc->buffer_fill=%f", i_force_qp, overhead, rc->buffer_rate, rc->buffer_fill);
+    log_trace("[rc][start]h->i_frame=%d,i_force_qp=%d,overhead=%d,rc->buffer_rate=%f,rc->buffer_fill=%f", h->i_frame, i_force_qp, overhead, rc->buffer_rate, rc->buffer_fill);
 
     if( rc->b_abr )
     {
@@ -1514,9 +1514,12 @@ int x264_ratecontrol_mb( x264_t *h, int bits )
     h->fdec->f_row_qp[y] = rc->qpm;
     h->fdec->f_row_qscale[y] = qscale;
 
+    log_trace("[rc][mb]upate rc->row_pred[0]");
     update_predictor( &rc->row_pred[0], qscale, h->fdec->i_row_satd[y], h->fdec->i_row_bits[y] );
-    if( h->sh.i_type != SLICE_TYPE_I && rc->qpm < h->fref[0][0]->f_row_qp[y] )
+    if( h->sh.i_type != SLICE_TYPE_I && rc->qpm < h->fref[0][0]->f_row_qp[y] ) {
+        log_trace("[rc][mb]upate rc->row_pred[1]");
         update_predictor( &rc->row_pred[1], qscale, h->fdec->i_row_satds[0][0][y], h->fdec->i_row_bits[y] );
+    }
 
     /* update ratecontrol per-mbpair in MBAFF */
     if( SLICE_MBAFF && !(y&1) )
@@ -1831,6 +1834,8 @@ int x264_ratecontrol_end( x264_t *h, int bits, int *filler )
         rc->cplxr_sum *= rc->cbr_decay;
         rc->wanted_bits_window += h->fenc->f_duration * rc->bitrate;
         rc->wanted_bits_window *= rc->cbr_decay;
+        log_trace("[rc][end]rc->qpa_rc=%f,rc->last_rceq=%f,h->fenc->f_duration=%f,rc->cplxr_sum=%f,rc->wanted_bits_window=%f",
+            rc->qpa_rc, rc->last_rceq, h->fenc->f_duration, rc->cplxr_sum, rc->wanted_bits_window);
     }
 
     if( rc->b_2pass )
@@ -1843,6 +1848,7 @@ int x264_ratecontrol_end( x264_t *h, int bits, int *filler )
             rc->bframe_bits += bits;
             if( h->fenc->b_last_minigop_bframe )
             {
+                log_trace("[rc][end]update pred_b_from_p");
                 update_predictor( rc->pred_b_from_p, qp2qscale( rc->qpa_rc ),
                                   h->fref[1][h->i_ref[1]-1]->i_satd, rc->bframe_bits / rc->bframes );
                 rc->bframe_bits = 0;
@@ -2024,6 +2030,8 @@ static float predict_size( predictor_t *p, float q, float var )
 
 static void update_predictor( predictor_t *p, float q, float var, float bits )
 {
+    log_trace("[rc][update_pred]q=%f,var=%f,bits=%f,old_coeff=%f,old_count=%f,old_decay=%f,old_offset=%f",
+        q, var, bits, p->coeff, p->count, p->decay, p->offset);
     float range = 1.5;
     if( var < 10 )
         return;
@@ -2042,6 +2050,8 @@ static void update_predictor( predictor_t *p, float q, float var, float bits )
     p->count  ++;
     p->coeff  += new_coeff;
     p->offset += new_offset;
+    log_trace("[rc][update_pred]q=%f,var=%f,bits=%f,new_coeff=%f,new_count=%f,new_decay=%f,new_offset=%f",
+        q, var, bits, p->coeff, p->count, p->decay, p->offset);
 }
 
 // update VBV after encoding a frame
@@ -2053,8 +2063,10 @@ static int update_vbv( x264_t *h, int bits )
     x264_ratecontrol_t *rct = h->thread[0]->rc;
     int64_t buffer_size = (int64_t)h->sps->vui.hrd.i_cpb_size_unscaled * h->sps->vui.i_time_scale;
 
-    if( rcc->last_satd >= h->mb.i_mb_count )
+    if( rcc->last_satd >= h->mb.i_mb_count ) {
+        log_trace("[rc][end][vbv]update rct->pred[%d]", h->sh.i_type);
         update_predictor( &rct->pred[h->sh.i_type], qp2qscale( rcc->qpa_rc ), rcc->last_satd, bits );
+    }
 
     if( !rcc->b_vbv )
         return filler;
@@ -2062,6 +2074,8 @@ static int update_vbv( x264_t *h, int bits )
     uint64_t buffer_diff = (uint64_t)bits * h->sps->vui.i_time_scale;
     rct->buffer_fill_final -= buffer_diff;
     rct->buffer_fill_final_min -= buffer_diff;
+    log_trace("[rc][end][vbv][in]bits=%d,buffer_fill_final=%"PRId64",buffer_fill_final_min=%"PRId64",buffer_diff=%"PRId64,
+        bits, rct->buffer_fill_final, rct->buffer_fill_final_min, buffer_diff);
 
     if( rct->buffer_fill_final_min < 0 )
     {
@@ -2080,6 +2094,8 @@ static int update_vbv( x264_t *h, int bits )
         buffer_diff = (uint64_t)bitrate * h->sps->vui.i_num_units_in_tick * h->fenc->i_cpb_duration;
     rct->buffer_fill_final += buffer_diff;
     rct->buffer_fill_final_min += buffer_diff;
+    log_trace("[rc][end][vbv][out]buffer_fill_final=%"PRId64",buffer_fill_final_min=%"PRId64",buffer_diff=%"PRId64,
+        rct->buffer_fill_final, rct->buffer_fill_final_min, buffer_diff);
 
     if( rct->buffer_fill_final > buffer_size )
     {
@@ -2097,6 +2113,7 @@ static int update_vbv( x264_t *h, int bits )
             rct->buffer_fill_final = X264_MIN( rct->buffer_fill_final, buffer_size );
             rct->buffer_fill_final_min = X264_MIN( rct->buffer_fill_final_min, buffer_size );
         }
+        log_trace("[rc][end][vbv]filler=%d", filler);
     }
 
     return filler;
@@ -2221,6 +2238,8 @@ static double vbv_pass1( x264_t *h, int pict_type, double q )
                 }
                 /* Try to get to get the buffer at least 50% filled, but don't set an impossible goal. */
                 target_fill = X264_MIN( rcc->buffer_fill + total_duration * rcc->vbv_max_rate * 0.5, rcc->buffer_size * 0.5 );
+                log_trace("[rc][start][vbv][underflow]iterations=%d,cur_bits=%f,total_duration=%f,buffer_fill_cur:%f,target_fill:%f,q=%f",
+                    iterations, cur_bits, total_duration, buffer_fill_cur, target_fill, q);
                 if( buffer_fill_cur < target_fill )
                 {
                     q *= 1.01;
@@ -2229,6 +2248,8 @@ static double vbv_pass1( x264_t *h, int pict_type, double q )
                 }
                 /* Try to get the buffer no more than 80% filled, but don't set an impossible goal. */
                 target_fill = x264_clip3f( rcc->buffer_fill - total_duration * rcc->vbv_max_rate * 0.5, rcc->buffer_size * 0.8, rcc->buffer_size );
+                log_trace("[rc][start][vbv][overflow]iterations=%d,cur_bits=%f,total_duration=%f,buffer_fill_cur:%f,target_fill:%f,q=%f",
+                    iterations, cur_bits, total_duration, buffer_fill_cur, target_fill, q);
                 if( rcc->b_vbv_min_rate && buffer_fill_cur > target_fill )
                 {
                     q /= 1.01;
@@ -2298,6 +2319,8 @@ static double vbv_pass1( x264_t *h, int pict_type, double q )
                 q *= X264_MAX( pbbits / space, bits / (0.5 * rcc->buffer_size) );
             }
             q = X264_MAX( q0/2, q );
+            log_trace("[rc][start][vbv][pict_type]nb=%d,bits=%f,pbbits=%f,bbits=%f,space=%f,bframe_cpb_duration=%f,fenc_cpb_duration=%f,q=%f",
+                nb, bits, pbbits, bbits, space, bframe_cpb_duration, fenc_cpb_duration, q);
         }
 
         if( !rcc->b_vbv_min_rate )
@@ -2574,6 +2597,8 @@ static float rate_estimate_qscale( x264_t *h )
             /* Always use up the whole VBV in this case. */
             if( rcc->single_frame_vbv )
                 rcc->frame_size_planned = X264_MIN( rcc->buffer_rate, frame_size_maximum );
+            log_trace("[rc][start][vbv]frame_size_maximum=%f,rcc->frame_size_planned=%f,q=%f",
+                frame_size_maximum, rcc->frame_size_planned, q);
         }
 
         rcc->frame_size_estimated = rcc->frame_size_planned;
@@ -2661,6 +2686,7 @@ void x264_threads_merge_ratecontrol( x264_t *h )
                 size += h->fdec->i_row_satd[row];
             int bits = t->stat.frame.i_mv_bits + t->stat.frame.i_tex_bits + t->stat.frame.i_misc_bits;
             int mb_count = (t->i_threadslice_end - t->i_threadslice_start) * h->mb.i_mb_width;
+            log_trace("[threaded_slices_write]update rc->pred[%d]", h->sh.i_type+(i+1)*5);
             update_predictor( &rc->pred[h->sh.i_type+(i+1)*5], qp2qscale( rct->qpa_rc/mb_count ), size, bits );
         }
         if( !i )

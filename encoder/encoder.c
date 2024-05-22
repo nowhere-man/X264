@@ -3530,7 +3530,8 @@ int     x264_encoder_encode( x264_t *h,
     /* 4: get picture to encode */
     h->fenc = x264_frame_shift( h->frames.current );
 
-    log_trace("[encoder_encode]h->i_frame:%d", h->i_frame);
+    log_trace("[encoder_encode]ENCODE BEGIN! h->i_frame:%d,fenc->i_type=%d,fenc->i_frame=%d",
+        h->i_frame, h->fenc->i_type, h->fenc->i_frame);
 
     /* If applicable, wait for previous frame reconstruction to finish */
     if( h->param.b_sliced_threads )
