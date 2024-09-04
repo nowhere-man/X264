@@ -18,16 +18,16 @@
                 "--tune", "ssim",
                 "--preset", "slower",
                 // structure
-                "--keyint", "30",
-                "--bframes", "3",
+                "--keyint", "150",
+                "--bframes", "7",
                 "--b-adapt", "0",
                 "--b-pyramid", "none",
                 "--no-scenecut",
                 // rc
-                "--bitrate", "200",
-                "--vbv-maxrate", "300",
-                "--vbv-bufsize", "300",
-                "--rc-lookahead", "4",
+                "--bitrate", "400",
+                "--vbv-maxrate", "600",
+                "--vbv-bufsize", "600",
+                "--rc-lookahead", "8",
                 // analysis
                 "--me", "dia",
                 "--ref", "1",

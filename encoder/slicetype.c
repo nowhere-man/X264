@@ -1317,7 +1317,13 @@ static void vbv_lookahead( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **fram
     timer_end(&h->timer.encoder_encode.lookahead.vbv_lookahead);
 }
 
-/// @brief 计算给定帧结构[cur_nonb][path]的cost
+/// @brief 计算给定帧类型字符串path的[cur_nonb][path]的cost
+/// @param h 编码器handle
+/// @param a analysis上下文
+/// @param frames lookahead缓存帧队列
+/// @param path 帧类型字符串，如"BBBP"
+/// @param threshold 如果在计算过程中，当前的cost已经大于阈值threshold，则提前终止
+/// @return 计算出来的cost
 static uint64_t slicetype_path_cost( x264_t *h, x264_mb_analysis_t *a, x264_frame_t **frames, char *path, uint64_t threshold )
 {
     /*
@@ -1671,13 +1677,16 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
             char path[X264_LOOKAHEAD_MAX+1];
             for( int j = 1; j < num_frames; j++ )
             {
+                // 决策了一个B帧，num_bframes就减一
                 if( j-1 > 0 && IS_X264_TYPE_B( frames[j-1]->i_type ) )
                     num_bframes--;
-                else
+                else // j-1被决策为P帧，重置last_nonb和num_bframes
                 {
                     last_nonb = j-1;
                     num_bframes = h->param.i_bframe;
                 }
+
+                // 已经决策出来了h->param.i_bframe个B帧了，则j只能决策为P
                 if( !num_bframes )
                 {
                     if( IS_X264_TYPE_AUTO_OR_B( frames[j]->i_type ) )
@@ -1685,21 +1694,26 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
                     continue;
                 }
 
+                // 由外部指定当前帧类型，跳过当前帧
                 if( frames[j]->i_type != X264_TYPE_AUTO )
                     continue;
 
+                // 如果外部指定了j+1的帧类型为B，则j决策为P
                 if( IS_X264_TYPE_B( frames[j+1]->i_type ) )
                 {
                     frames[j]->i_type = X264_TYPE_P;
                     continue;
                 }
 
+                //当前最多可以插入B帧的个数
                 int bframes = j - last_nonb - 1;
                 log_trace("[lookahead][analyse]fast adaptive bframe,j=%d,last_nonb=%d", j, last_nonb);
-
+                // 插入B帧
                 memset( path, 'B', bframes );
                 strcpy( path+bframes, "PP" );
+                // 计算B...B PP的cost
                 uint64_t cost_p = slicetype_path_cost( h, &a, frames+last_nonb, path, COST_MAX64 );
+                // 计算B...B BP的cost
                 strcpy( path+bframes, "BP" );
                 uint64_t cost_b = slicetype_path_cost( h, &a, frames+last_nonb, path, cost_p );
 
@@ -1712,9 +1726,14 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
         }
         else
         {
+            // num_bframes为最大连续B帧个数
             int num_bframes = h->param.i_bframe;
+            // num_frames为lookahead缓存帧个数
+            // frames[0]是上一次已经被决策出来的非B帧
             for( int j = 1; j < num_frames; j++ )
             {
+                // 要么h->param.i_bframe ==0, 则决策为全P帧
+                // 要么已经决策出来了的连续B帧个数达到最大h->param.i_bframe，则下一个决策为P帧
                 if( !num_bframes )
                 {
                     if( IS_X264_TYPE_AUTO_OR_B( frames[j]->i_type ) )
@@ -1722,14 +1741,16 @@ void x264_slicetype_analyse( x264_t *h, int intra_minigop )
                 }
                 else if( frames[j]->i_type == X264_TYPE_AUTO )
                 {
+                    // 如果外部指定了j+1的帧类型为B，则j决策为P
                     if( IS_X264_TYPE_B( frames[j+1]->i_type ) )
                         frames[j]->i_type = X264_TYPE_P;
                     else
                         frames[j]->i_type = X264_TYPE_B;
                 }
+                // 决策了一个B帧，num_bframes就减一
                 if( IS_X264_TYPE_B( frames[j]->i_type ) )
                     num_bframes--;
-                else
+                else // 如果决策出了P帧，则重置num_bframes
                     num_bframes = h->param.i_bframe;
             }
         }
