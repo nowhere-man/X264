@@ -1,27 +1,6 @@
 #!/bin/bash
-
 rm -rf build
 mkdir -p build
-
-./configure \
-    --prefix=./build \
-    --enable-shared \
-    --bit-depth=8 \
-    --chroma-format=420 \
-    --disable-opencl \
-    --disable-interlaced \
-    --disable-asm \
-    --disable-thread \
-    --disable-avs \
-    --disable-swscale \
-    --disable-lavf \
-    --disable-ffms \
-    --disable-gpac \
-    --disable-lsmash \
-    --enable-debug \
-
-make clean
-
-make -j 20
-
-make install
+cmake -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release -S./ -B./build -G "Unix Makefiles" --no-warn-unused-cli
+cmake --build ./build --parallel
+cmake --install ./build

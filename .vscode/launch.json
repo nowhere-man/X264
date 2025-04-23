@@ -8,7 +8,7 @@
             "preLaunchTask": "Build",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/bin/x264",
+            "program": "${workspaceFolder}/build/x264cli",
             "args": [
                 "--input-res", "176x144",
                 "--fps", "30",
@@ -54,7 +54,7 @@
             "preLaunchTask": "Build",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/bin/x264",
+            "program": "${workspaceFolder}/build/x264cli",
             "args": [
                 "--input-res", "176x144",
                 "--fps", "30",

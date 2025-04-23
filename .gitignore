@@ -53,3 +53,6 @@ x264_config.h
 x264.pc
 *.h264
 *.log
+
+common/oclobj.h
+install/
