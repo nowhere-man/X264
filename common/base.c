@@ -30,6 +30,8 @@
 
 #if HAVE_MALLOC_H
 #include <malloc.h>
+#elif HAVE_MALLOC_MALLOC_H
+#include <malloc/malloc.h>
 #endif
 #if HAVE_THP
 #include <sys/mman.h>

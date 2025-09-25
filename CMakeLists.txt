@@ -153,8 +153,11 @@ else()
     if(ENABLE_ASAN)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
     endif()
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic,-z,now,-z,relro,-z,noexecstack")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bsymbolic,-z,now,-z,relro,-z,noexecstack")
+    # TODO: Clang
+    if(GCC)
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic,-z,now,-z,relro,-z,noexecstack")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bsymbolic,-z,now,-z,relro,-z,noexecstack")
+    endif()
 endif()
 set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} ${C_FLAGS})
 

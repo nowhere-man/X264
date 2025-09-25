@@ -56,3 +56,4 @@ x264.pc
 
 common/oclobj.h
 install/
+.cache/
