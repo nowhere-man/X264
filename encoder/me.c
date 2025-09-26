@@ -35,6 +35,18 @@
  * and refine_* are run only on the winner.
  * the subme=8,9 values are much higher because any amount of satd search makes
  * up its time by reducing the number of qpel-rd iterations. */
+/*
+    { refine_hpel, refine_qpel, me_hpel, me_qpel }
+    ME - 运动搜索次数
+        - me_hpel (索引2)：在 x264_me_search_ref 中进行半像素搜索的次数
+        - me_qpel (索引3)：在 x264_me_search_ref 中进行1/4像素搜索的次数
+    Refine - 精化迭代次数
+        - refine_hpel (索引0)：在 refine_subpel 中进行半像素精化的次数
+        - refine_qpel (索引1)：在 refine_subpel 中进行1/4像素精化的次数
+
+    ME次数：在运动估计主流程中，对所有候选块类型进行的搜索次数
+    Refine次数：在最优候选确定后，进行的额外精化次数
+*/
 static const uint8_t subpel_iterations[][4] =
    {{0,0,0,0},
     {1,1,0,0},
@@ -181,11 +193,15 @@ do\
 
 void x264_me_search_ref( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc, int *p_halfpel_thresh )
 {
+    // 像素块大小
     const int bw = x264_pixel_size[m->i_pixel].w;
     const int bh = x264_pixel_size[m->i_pixel].h;
     const int i_pixel = m->i_pixel;
     const int stride = m->i_stride[0];
+    // 搜索范围
     int i_me_range = h->param.analyse.i_me_range;
+    // bmx, bmy: 当前最佳mv
+    // bcost : 当前最佳cost
     int bmx, bmy, bcost = COST_MAX;
     int bpred_cost = COST_MAX;
     int omx, omy, pmx, pmy;
@@ -196,6 +212,7 @@ void x264_me_search_ref( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc, 
 
     ALIGNED_ARRAY_16( int, costs,[16] );
 
+    // MV边界
     int mv_x_min = h->mb.mv_limit_fpel[0][0];
     int mv_y_min = h->mb.mv_limit_fpel[0][1];
     int mv_x_max = h->mb.mv_limit_fpel[1][0];
@@ -216,18 +233,22 @@ void x264_me_search_ref( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc, 
     if( h->mb.i_subpel_refine >= 3 )
     {
         /* Calculate and check the MVP first */
+        // 1. 将MVP限制在搜索边界内，保持子像素精度
         int bpred_mx = x264_clip3( m->mvp[0], SPEL(mv_x_min), SPEL(mv_x_max) );
         int bpred_my = x264_clip3( m->mvp[1], SPEL(mv_y_min), SPEL(mv_y_max) );
         pmv = pack16to32_mask( bpred_mx, bpred_my );
+        // 2. 转换为全像素用于后续搜索
         pmx = FPEL( bpred_mx );
         pmy = FPEL( bpred_my );
 
+        // 3. 计算MVP的半像素精度成本：进行运动补偿和cost计算
         COST_MV_HPEL( bpred_mx, bpred_my, bpred_cost );
         int pmv_cost = bpred_cost;
 
         if( i_mvc > 0 )
         {
             /* Clip MV candidates and eliminate those equal to zero and pmv. */
+            // 1. 裁剪候选向量到搜索范围内，去除重复
             int valid_mvcs = x264_predictor_clip( mvc_temp+2, mvc, i_mvc, h->mb.mv_limit_fpel, pmv );
             if( valid_mvcs > 0 )
             {
@@ -235,26 +256,35 @@ void x264_me_search_ref( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc, 
                 /* We stuff pmv here to branchlessly pick between pmv and the various
                  * MV candidates. [0] gets skipped in order to maintain alignment for
                  * x264_predictor_clip. */
-                M32( mvc_temp[1] ) = pmv;
-                bpred_cost <<= 4;
-                do
+                // 2. 准备候选向量数组
+                M32( mvc_temp[1] ) = pmv; // 将pmv放入索引1位置
+                bpred_cost <<= 4;         // 低4位存储索引，高位存储cost
+
+                do // 3. 遍历所有有效候选向量
                 {
+                    // 获取候选向量
                     int mx = mvc_temp[i+1][0];
                     int my = mvc_temp[i+1][1];
+                    // 计算半像素成本
                     COST_MV_HPEL( mx, my, cost );
+                    // 4. 如果找到更好的候选，更新最佳cost和index
                     COPY1_IF_LT( bpred_cost, (cost << 4) + i );
                 } while( ++i <= valid_mvcs );
+
+                // 5. 恢复最佳mv，通过bpred_cost&15提取索引
                 bpred_mx = mvc_temp[(bpred_cost&15)+1][0];
                 bpred_my = mvc_temp[(bpred_cost&15)+1][1];
-                bpred_cost >>= 4;
+                bpred_cost >>= 4; // 恢复实际cost
             }
         }
 
         /* Round the best predictor back to fullpel and get the cost, since this is where
          * we'll be starting the fullpel motion search. */
+        // 1. 将最佳子像素预测向量转换为全像素
         bmx = FPEL( bpred_mx );
         bmy = FPEL( bpred_my );
         bpred_mv = pack16to32_mask(bpred_mx, bpred_my);
+        // x00030003是X和Y分量的低2位，如果非零，说明有子像素分量，需要重新计算全像素成本
         if( bpred_mv&0x00030003 ) /* Only test if the tested predictor is actually subpel... */
             COST_MV( bmx, bmy );
         else                          /* Otherwise just copy the cost (we already know it) */
@@ -272,6 +302,12 @@ void x264_me_search_ref( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc, 
         {
             COPY3_IF_LT( bcost, pmv_cost, bmx, 0, bmy, 0 );
         }
+        /*处理完上面流程，得到：
+            1. bmx, bmy：最佳全像素mv，作为后续全像素搜索的起点
+            2. bcost：对应的最佳cost
+            3. bpred_mv：最佳子像素预测向量（用于最终比较）
+            4. bpred_cost：子像素预测向量的cost
+        */
     }
     else
     {
@@ -773,6 +809,7 @@ void x264_me_search_ref( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc, 
 
     /* -> qpel mv */
     uint32_t bmv = pack16to32_mask(bmx,bmy);
+    // 全像素转换为1/4像素精度
     uint32_t bmv_spel = SPELx2(bmv);
     if( h->mb.i_subpel_refine < 3 )
     {
@@ -784,6 +821,7 @@ void x264_me_search_ref( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc, 
     }
     else
     {
+        // 比较子像素预测器 vs 全像素搜索结果
         M32(m->mv) = bpred_cost < bcost ? bpred_mv : bmv_spel;
         m->cost = X264_MIN( bpred_cost, bcost );
     }
@@ -791,7 +829,9 @@ void x264_me_search_ref( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc, 
     /* subpel refine */
     if( h->mb.i_subpel_refine >= 2 )
     {
+        // 1/2像素ME搜索次数
         int hpel = subpel_iterations[h->mb.i_subpel_refine][2];
+        // 1/4像素ME搜索次数
         int qpel = subpel_iterations[h->mb.i_subpel_refine][3];
         refine_subpel( h, m, hpel, qpel, p_halfpel_thresh, 0 );
     }
@@ -894,31 +934,42 @@ static void refine_subpel( x264_t *h, x264_me_t *m, int hpel_iters, int qpel_ite
                 COST_MV_SAD( mx, my );
         }
 
-        bcost <<= 6;
+        bcost <<= 6; // 左移6位为方向编码预留空间
         for( int i = hpel_iters; i > 0; i-- )
         {
             int omx = bmx, omy = bmy;
             intptr_t stride = 64; // candidates are either all hpel or all qpel, so one stride is enough
+            // 获取4个半像素邻居的运动补偿结果
             pixel *src0, *src1, *src2, *src3;
+            // 上
             src0 = h->mc.get_ref( pix,    &stride, m->p_fref, m->i_stride[0], omx, omy-2, bw, bh+1, &m->weight[0] );
+            // 左
             src2 = h->mc.get_ref( pix+32, &stride, m->p_fref, m->i_stride[0], omx-2, omy, bw+4, bh, &m->weight[0] );
+            // 下
             src1 = src0 + stride;
+            // 右
             src3 = src2 + 1;
+            // 计算四个方向的SAD
             h->pixf.fpelcmp_x4[i_pixel]( m->p_fenc[0], src0, src1, src2, src3, stride, costs );
+            // 加上编码mv的cost
             costs[0] += p_cost_mvx[omx  ] + p_cost_mvy[omy-2];
             costs[1] += p_cost_mvx[omx  ] + p_cost_mvy[omy+2];
             costs[2] += p_cost_mvx[omx-2] + p_cost_mvy[omy  ];
             costs[3] += p_cost_mvx[omx+2] + p_cost_mvy[omy  ];
-            COPY1_IF_LT( bcost, (costs[0]<<6)+2 );
-            COPY1_IF_LT( bcost, (costs[1]<<6)+6 );
-            COPY1_IF_LT( bcost, (costs[2]<<6)+16 );
-            COPY1_IF_LT( bcost, (costs[3]<<6)+48 );
+            // 找最佳方向，写到bcost的低6位
+            COPY1_IF_LT(bcost, (costs[0] << 6) + 2);  /* 上 */
+            COPY1_IF_LT(bcost, (costs[1] << 6) + 6);  /* 下 */
+            COPY1_IF_LT(bcost, (costs[2] << 6) + 16); /* 左 */
+            COPY1_IF_LT(bcost, (costs[3] << 6) + 48); /* 右 */
+            // 如果相比之前没有改进，停止搜索
             if( !(bcost&63) )
                 break;
+            // 提取x，y方向，并移动
             bmx -= (int32_t)((uint32_t)bcost<<26)>>29;
             bmy -= (int32_t)((uint32_t)bcost<<29)>>29;
-            bcost &= ~63;
+            bcost &= ~63; // 清除方向信息
         }
+        // 恢复cost
         bcost >>= 6;
     }
 
@@ -931,6 +982,7 @@ static void refine_subpel( x264_t *h, x264_me_t *m, int hpel_iters, int qpel_ite
     /* early termination when examining multiple reference frames */
     if( p_halfpel_thresh )
     {
+        // cost太大，不进行1/4像素搜索
         if( (bcost*7)>>3 > *p_halfpel_thresh )
         {
             m->cost = bcost;
@@ -966,6 +1018,7 @@ static void refine_subpel( x264_t *h, x264_me_t *m, int hpel_iters, int qpel_ite
     {
         int omx = bmx, omy = bmy;
         /* We have to use mc_luma because all strides must be the same to use fpelcmp_x4 */
+        // 使用运动补偿生成4个候选
         h->mc.mc_luma( pix   , 64, m->p_fref, m->i_stride[0], omx, omy-1, bw, bh, &m->weight[0] );
         h->mc.mc_luma( pix+16, 64, m->p_fref, m->i_stride[0], omx, omy+1, bw, bh, &m->weight[0] );
         h->mc.mc_luma( pix+32, 64, m->p_fref, m->i_stride[0], omx-1, omy, bw, bh, &m->weight[0] );

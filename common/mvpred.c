@@ -516,6 +516,7 @@ int x264_mb_predict_mv_direct16x16( x264_t *h, int *b_changed )
 }
 
 /* This just improves encoder performance, it's not part of the spec */
+// 为16x16宏块收集候选运动向量mvc，提高运动估计的起始点质量。
 void x264_mb_predict_mv_ref16x16( x264_t *h, int i_list, int i_ref, int16_t (*mvc)[2], int *i_mvc )
 {
     int16_t (*mvr)[2] = h->mb.mvr[i_list][i_ref];
@@ -538,12 +539,14 @@ void x264_mb_predict_mv_ref16x16( x264_t *h, int i_list, int i_ref, int16_t (*mv
     }
 
     /* b_direct */
+    // 1. B帧的Direct模式预测，从Direct模式获取MV作为候选
     if( h->sh.i_type == SLICE_TYPE_B
         && h->mb.cache.ref[i_list][x264_scan8[12]] == i_ref )
     {
         SET_MVP( h->mb.cache.mv[i_list][x264_scan8[12]] );
     }
 
+    //  2. 1/2分辨率预测，使用预分析阶段得到的MV，将低分辨率MV放大2倍作为候选
     if( i_ref == 0 && h->frames.b_have_lowres )
     {
         int idx = i_list ? h->fref[1][0]->i_frame-h->fenc->i_frame-1
@@ -560,6 +563,7 @@ void x264_mb_predict_mv_ref16x16( x264_t *h, int i_list, int i_ref, int16_t (*mv
     }
 
     /* spatial predictors */
+    // 3. 空域预测，收集相邻已编码宏块的MV
     if( SLICE_MBAFF )
     {
         SET_IMVP( h->mb.i_mb_left_xy[0] );
@@ -569,15 +573,16 @@ void x264_mb_predict_mv_ref16x16( x264_t *h, int i_list, int i_ref, int16_t (*mv
     }
     else
     {
-        SET_MVP( mvr[h->mb.i_mb_left_xy[0]] );
-        SET_MVP( mvr[h->mb.i_mb_top_xy] );
-        SET_MVP( mvr[h->mb.i_mb_topleft_xy] );
-        SET_MVP( mvr[h->mb.i_mb_topright_xy] );
+        SET_MVP( mvr[h->mb.i_mb_left_xy[0]] ); // 左
+        SET_MVP( mvr[h->mb.i_mb_top_xy] );     // 上
+        SET_MVP( mvr[h->mb.i_mb_topleft_xy] ); // 左上
+        SET_MVP( mvr[h->mb.i_mb_topright_xy] );// 右上
     }
 #undef SET_IMVP
 #undef SET_MVP
 
     /* temporal predictors */
+    // 4. 时域预测， 从co-located宏块获取MV，根据时域距离进行缩放补偿
     if( h->fref[0][0]->i_ref[0] > 0 )
     {
         x264_frame_t *l0 = h->fref[0][0];

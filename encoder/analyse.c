@@ -1163,7 +1163,28 @@ static void intra_rd_refine( x264_t *h, x264_mb_analysis_t *a )
 
 #define REF_COST(list, ref) \
     (a->p_cost_ref[list][ref])
+/*
+Output：
+1. 分析结果存储 (a->l0.me16x16)
+  - a->l0.me16x16.cost: 最优的16x16模式成本
+  - a->l0.me16x16.i_ref: 最优参考帧索引
+  - a->l0.me16x16.mv[2]: 最优运动向量
+  - a->l0.me16x16.i_pixel: 像素块类型 (PIXEL_16x16)
 
+2. 宏块状态设置
+  - h->mb.i_type: 宏块类型
+    - P_SKIP: 跳过模式
+    - P_L0: P_16x16模式
+  - h->mb.i_partition: 分割模式 (D_16x16)
+
+3. 缓存更新
+  - 运动向量缓存: h->mb.mvr[0][i_ref][h->mb.i_mb_xy]
+  - 候选向量缓存: a->l0.mvc[i_ref][0]
+  - 参考帧缓存: h->mb.cache.ref[0]
+
+4. RD成本 (如果启用)
+  - a->l0.i_rd16x16: 16x16模式的RD成本
+*/
 static void mb_analyse_inter_p16x16( x264_t *h, x264_mb_analysis_t *a )
 {
     x264_me_t m;
@@ -1188,11 +1209,13 @@ static void mb_analyse_inter_p16x16( x264_t *h, x264_mb_analysis_t *a )
 
         x264_mb_predict_mv_16x16( h, 0, i_ref, m.mvp );
 
+        // 重复参考帧优化
         if( h->mb.ref_blind_dupe == i_ref )
         {
             CP32( m.mv, a->l0.mvc[0][0] );
             x264_me_refine_qpel_refdupe( h, &m, p_halfpel_thresh );
         }
+        // 常规运动搜索
         else
         {
             x264_mb_predict_mv_ref16x16( h, 0, i_ref, mvc, &i_mvc );
@@ -1205,6 +1228,7 @@ static void mb_analyse_inter_p16x16( x264_t *h, x264_mb_analysis_t *a )
 
         /* early termination
          * SSD threshold would probably be better than SATD */
+        // P-SKIP模式检查
         if( i_ref == 0
             && a->b_try_skip
             && m.cost-m.cost_mv < 300*a->i_lambda
@@ -1224,11 +1248,12 @@ static void mb_analyse_inter_p16x16( x264_t *h, x264_mb_analysis_t *a )
         if( m.cost < a->l0.me16x16.cost )
             h->mc.memcpy_aligned( &a->l0.me16x16, &m, sizeof(x264_me_t) );
     }
-
+    // 设置最优参考帧
     x264_macroblock_cache_ref( h, 0, 0, 4, 4, 0, a->l0.me16x16.i_ref );
     assert( a->l0.me16x16.mv[1] <= h->mb.mv_max_spel[1] || h->i_thread_frames == 1 );
 
     h->mb.i_type = P_L0;
+    // RD优化
     if( a->i_mbrd )
     {
         mb_init_fenc_cache( h, a->i_mbrd >= 2 || h->param.analyse.inter & X264_ANALYSE_PSUB8x8 );
@@ -1236,6 +1261,7 @@ static void mb_analyse_inter_p16x16( x264_t *h, x264_mb_analysis_t *a )
         {
             h->mb.i_partition = D_16x16;
             x264_macroblock_cache_mv_ptr( h, 0, 0, 4, 4, 0, a->l0.me16x16.mv );
+            // 计算rd cost
             a->l0.i_rd16x16 = rd_cost_mb( h, a->i_lambda2 );
             if( !(h->mb.i_cbp_luma|h->mb.i_cbp_chroma) )
                 h->mb.i_type = P_SKIP;
@@ -2900,11 +2926,18 @@ intra_analysis:
             /* Special fast-skip logic using information from mb_info. */
             if( h->fdec->mb_info && (h->fdec->mb_info[h->mb.i_mb_xy]&X264_MBINFO_CONSTANT) )
             {
+                /*
+                    - 非 MBAFF 模式
+                    - 当前帧与参考帧间距为1
+                    - 无加权预测
+                    - 参考帧该位置的QP ≤ 当前QP
+                */
                 if( !SLICE_MBAFF && (h->fdec->i_frame - h->fref[0][0]->i_frame) == 1 && !h->sh.b_weighted_pred &&
                     h->fref[0][0]->effective_qp[h->mb.i_mb_xy] <= h->mb.i_qp )
                 {
                     h->mb.i_partition = D_16x16;
                     /* Use the P-SKIP MV if we can... */
+                    // 如果预测MV为0，直接决策为skip
                     if( !M32(h->mb.cache.pskip_mv) )
                     {
                         b_skip = 1;
@@ -2923,7 +2956,7 @@ intra_analysis:
                 else if( h->param.analyse.b_mb_info_update )
                     h->fdec->mb_info[h->mb.i_mb_xy] &= ~X264_MBINFO_CONSTANT;
             }
-
+            // 多线程且宏块超出帧边界时直接跳过
             int skip_invalid = h->i_thread_frames > 1 && h->mb.cache.pskip_mv[1] > h->mb.mv_max_spel[1];
             /* If the current macroblock is off the frame, just skip it. */
             if( HAVE_INTERLACED && !MB_INTERLACED && h->mb.i_mb_y * 16 >= h->param.i_height && !skip_invalid )
@@ -2934,8 +2967,9 @@ intra_analysis:
                 if( skip_invalid )
                     // FIXME don't need to check this if the reference frame is done
                     {}
-                else if( h->param.analyse.i_subpel_refine >= 3 )
+                else if( h->param.analyse.i_subpel_refine >= 3 ) // 根据subme配置
                     analysis.b_try_skip = 1;
+                // 检查相邻宏块类型，如果左侧、上方、左上方宏块有P_SKIP，检查当前块是否为skip
                 else if( h->mb.i_mb_type_left[0] == P_SKIP ||
                          h->mb.i_mb_type_top == P_SKIP ||
                          h->mb.i_mb_type_topleft == P_SKIP ||
@@ -3047,8 +3081,25 @@ skip_analysis:
 
             h->mb.i_partition = i_partition;
 
-            /* refine qpel */
-            //FIXME mb_type costs?
+            /* x264_me_refine_qpel的必要性：
+                ME阶段优化目标:
+                    全局最优：找到所有模式中的最佳候选
+                    需要在计算速度和每个候选的质量间做平衡
+                    FOR each_mode {
+                        快速搜索找到合理MV;
+                        记录该模式cost;
+                    }
+                    选择best-mode;
+
+                Refine阶段优化目标:
+                    局部最优：让确定的获胜模式达到最佳质量
+                    可以投入更多资源，因为只针对一个确定目标
+                    FOR best_mode {
+                        深度搜索找到最优MV;
+                        这是最终要用的MV;
+                    }
+            */
+            // FIXME mb_type costs?
             if( analysis.i_mbrd || !h->mb.i_subpel_refine )
             {
                 /* refine later */
@@ -3111,6 +3162,7 @@ skip_analysis:
                 }
             }
 
+            // P帧编码为Intra的模式和cost计算
             if( h->mb.b_chroma_me )
             {
                 if( CHROMA444 )
@@ -3135,8 +3187,10 @@ skip_analysis:
                                       analysis.i_satd_i8x8,
                                       analysis.i_satd_i4x4 );
 
+            // Inter还是Intra的最终决策
             if( analysis.i_mbrd )
             {
+                // 使用RD cost重新评估所有模式
                 mb_analyse_p_rd( h, &analysis, X264_MIN(i_satd_inter, i_satd_intra) );
                 i_type = P_L0;
                 i_partition = D_16x16;
@@ -3147,10 +3201,12 @@ skip_analysis:
                 h->mb.i_type = i_type;
                 h->mb.i_partition = i_partition;
                 if( i_cost < COST_MAX )
+                    // 4x4 DCT vs 8x8 DCT
                     mb_analyse_transform_rd( h, &analysis, &i_satd_inter, &i_cost );
                 intra_rd( h, &analysis, i_satd_inter * 5/4 + 1 );
             }
 
+            // 将最优的帧间模式与所有帧内模式进行最终比较
             COPY2_IF_LT( i_cost, analysis.i_satd_i16x16, i_type, I_16x16 );
             COPY2_IF_LT( i_cost, analysis.i_satd_i8x8, i_type, I_8x8 );
             COPY2_IF_LT( i_cost, analysis.i_satd_i4x4, i_type, I_4x4 );
@@ -3176,6 +3232,7 @@ skip_analysis:
                 goto intra_analysis;
             }
 
+            // RDO阶段的最终精细化：结合真实的比特成本进行最优决策
             if( analysis.i_mbrd >= 2 && h->mb.i_type != I_PCM )
             {
                 if( IS_INTRA( h->mb.i_type ) )
@@ -3247,14 +3304,19 @@ skip_analysis:
             mb_init_fenc_cache( h, analysis.i_mbrd >= 2 );
 
         h->mb.i_type = B_SKIP;
+        // 设置：h->param.analyse.i_direct_mv_pred == X264_DIRECT_PRED_AUTO
         if( h->mb.b_direct_auto_write )
         {
             /* direct=auto heuristic: prefer whichever mode allows more Skip macroblocks */
+            /* direct模式可用性检查
+              - 空间直接模式 (b_direct_spatial_mv_pred = 1)
+              - 时间直接模式 (b_direct_spatial_mv_pred = 0)*/
             for( int i = 0; i < 2; i++ )
             {
                 int b_changed = 1;
                 h->sh.b_direct_spatial_mv_pred ^= 1;
                 analysis.b_direct_available = x264_mb_predict_mv_direct16x16( h, i && analysis.b_direct_available ? &b_changed : NULL );
+                // 如果direct可用，检测skip是否可用
                 if( analysis.b_direct_available )
                 {
                     if( b_changed )
@@ -3837,4 +3899,3 @@ static void analyse_update_cache( x264_t *h, x264_mb_analysis_t *a  )
 }
 
 #include "slicetype.c"
-
