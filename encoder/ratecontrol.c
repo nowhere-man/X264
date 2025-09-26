@@ -1493,18 +1493,23 @@ static float predict_row_size_to_end( x264_t *h, int y, float qp )
  *  eliminate all use of qp in row ratecontrol: make it entirely qscale-based.
  *  make this function stop being needlessly O(N^2)
  *  update more often than once per row? */
+// 宏块级别的码率控制，在每行宏块编码完成后被调用，动态调整后续行的QP。
 int x264_ratecontrol_mb( x264_t *h, int bits )
 {
     x264_ratecontrol_t *rc = h->rc;
     const int y = h->mb.i_mb_y;
 
+    // 累加当前行的比特数
     h->fdec->i_row_bits[y] += bits;
+    // AQ调整后的QP
     rc->qpa_aq += h->mb.i_qp;
 
+    // 只有在一行都编码完，才进行行级调整
     if( h->mb.i_mb_x != h->mb.i_mb_width - 1 )
         return 0;
 
     x264_emms();
+    // 累加同一行每一个块的qp，qpa_rc记录码率控制层决定的QP
     rc->qpa_rc += rc->qpm * h->mb.i_mb_width;
 
     if( !rc->b_vbv )
@@ -1515,7 +1520,11 @@ int x264_ratecontrol_mb( x264_t *h, int bits )
     h->fdec->f_row_qscale[y] = qscale;
 
     log_trace("[rc][mb]upate rc->row_pred[0]");
+
+    // row_pred[0]: 基于当前帧复杂度的预测器
     update_predictor( &rc->row_pred[0], qscale, h->fdec->i_row_satd[y], h->fdec->i_row_bits[y] );
+    // row_pred[1]: 基于参考帧复杂度的预测器(仅P/B帧)
+    // 只有当前行QP小于参考帧时才更新参考预测
     if( h->sh.i_type != SLICE_TYPE_I && rc->qpm < h->fref[0][0]->f_row_qp[y] ) {
         log_trace("[rc][mb]upate rc->row_pred[1]");
         update_predictor( &rc->row_pred[1], qscale, h->fdec->i_row_satds[0][0][y], h->fdec->i_row_bits[y] );
@@ -1527,6 +1536,7 @@ int x264_ratecontrol_mb( x264_t *h, int bits )
 
     /* FIXME: We don't currently support the case where there's a slice
      * boundary in between. */
+    // 重编码可行性检查：不能跨越slice边界
     int can_reencode_row = h->sh.i_first_mb <= ((h->mb.i_mb_y - SLICE_MBAFF) * h->mb.i_mb_stride);
 
     /* tweak quality based on difference from predicted size */
@@ -1534,16 +1544,24 @@ int x264_ratecontrol_mb( x264_t *h, int bits )
     float qp_absolute_max = h->param.rc.i_qp_max;
     if( rc->rate_factor_max_increment )
         qp_absolute_max = X264_MIN( qp_absolute_max, rc->qp_novbv + rc->rate_factor_max_increment );
+    // 平滑约束：qp不能突变
     float qp_max = X264_MIN( prev_row_qp + h->param.rc.i_qp_step, qp_absolute_max );
     float qp_min = X264_MAX( prev_row_qp - h->param.rc.i_qp_step, h->param.rc.i_qp_min );
+    // 0.5的qp step调整步长
     float step_size = 0.5f;
+
+    // 当前帧预期的总消耗bits
     float slice_size_planned = h->param.b_sliced_threads ? rc->slice_size_planned : rc->frame_size_planned;
+    // 截止当前行，实际已经消耗的bit数
     float bits_so_far = row_bits_so_far( h, y );
     rc->bits_so_far = bits_so_far;
+    // 允许的帧大小误差
     float max_frame_error = x264_clip3f( 1.0 / h->mb.i_mb_height, 0.05, 0.25 );
+    // 在vbv约束下，最大帧的size
     float max_frame_size = rc->frame_size_maximum - rc->frame_size_maximum * max_frame_error;
     max_frame_size = X264_MIN( max_frame_size, rc->buffer_fill - rc->buffer_rate * max_frame_error );
     float size_of_other_slices = 0;
+    // 多线程下，各slice的编码进度不同步，根据当前进度，估算其他slice的最终大小
     if( h->param.b_sliced_threads )
     {
         float bits_so_far_of_other_slices = 0;
@@ -1562,21 +1580,26 @@ int x264_ratecontrol_mb( x264_t *h, int bits )
     if( y < h->i_threadslice_end-1 )
     {
         /* B-frames shouldn't use lower QP than their reference frames. */
+        // B帧的QP不应低于其参考帧
         if( h->sh.i_type == SLICE_TYPE_B )
         {
             qp_min = X264_MAX( qp_min, X264_MAX( h->fref[0][0]->f_row_qp[y+1], h->fref[1][0]->f_row_qp[y+1] ) );
             rc->qpm = X264_MAX( rc->qpm, qp_min );
         }
 
+        // 估算当前行编码完成后的缓冲区状态
         float buffer_left_planned = rc->buffer_fill - rc->frame_size_planned;
         buffer_left_planned = X264_MAX( buffer_left_planned, 0.f );
         /* More threads means we have to be more cautious in letting ratecontrol use up extra bits. */
+        // 容忍度：多线程下的保守稀疏
         float rc_tol = buffer_left_planned / h->param.i_threads * rc->rate_tolerance;
         float b1 = bits_so_far + predict_row_size_to_end( h, y, rc->qpm ) + size_of_other_slices;
+        // 当前编码进度越多，预测越可靠
         float trust_coeff = x264_clip3f( bits_so_far / slice_size_planned, 0.0, 1.0 );
 
         /* Don't increase the row QPs until a sufficient amount of the bits of the frame have been processed, in case a flat */
         /* area at the top of the frame was measured inaccurately. */
+        // 前5%的进度保持稳定，避免预测
         if( trust_coeff < 0.05f )
             qp_max = qp_absolute_max = prev_row_qp;
 
@@ -1586,6 +1609,10 @@ int x264_ratecontrol_mb( x264_t *h, int bits )
         if( !rc->b_vbv_min_rate )
             qp_min = X264_MAX( qp_min, rc->qp_novbv );
 
+        // 触发qp上调循环：
+        // 1. 明显超标：超出计划+容忍
+        // 2. 超出计划，并且低于vbv限制之前的qp
+        // 3. 可能存在缓冲区导致underflow
         while( rc->qpm < qp_max
                && ((b1 > rc->frame_size_planned + rc_tol) ||
                    (b1 > rc->frame_size_planned && rc->qpm < rc->qp_novbv) ||
@@ -1595,6 +1622,11 @@ int x264_ratecontrol_mb( x264_t *h, int bits )
             b1 = bits_so_far + predict_row_size_to_end( h, y, rc->qpm ) + size_of_other_slices;
         }
 
+        // 触发qp下调循环，条件全部满足才调整：
+        // 1. qp大于qpmin，并且小于上一行的qp
+        // 2. qp大于首行qp
+        // 3. 不超过最大帧大小
+        // 4. 低于80%计划大小
         float b_max = b1 + ((rc->buffer_fill - rc->buffer_size + rc->buffer_rate) * 0.90f - b1) * trust_coeff;
         rc->qpm -= step_size;
         float b2 = bits_so_far + predict_row_size_to_end( h, y, rc->qpm ) + size_of_other_slices;
@@ -1619,8 +1651,15 @@ int x264_ratecontrol_mb( x264_t *h, int bits )
         rc->frame_size_estimated = b1 - size_of_other_slices;
 
         /* If the current row was large enough to cause a large QP jump, try re-encoding it. */
+        // 重编码当前行决策：
+        // 1. QP需要大幅上调，变化太大
+        // 2. 前一行的qp在合理范围中
         if( rc->qpm > qp_max && prev_row_qp < qp_max && can_reencode_row )
         {
+            // 重编码策略：
+            // 1. 取前一行和目标qp的平均值
+            // 2. 恢复编码前的统计状态
+            // 3. 清空当前行的比特计数
             /* Bump QP to halfway in between... close enough. */
             rc->qpm = x264_clip3f( (prev_row_qp + rc->qpm)*0.5f, prev_row_qp + 1.0f, qp_max );
             rc->qpa_rc = rc->qpa_rc_prev;
@@ -1917,22 +1956,52 @@ static double get_qscale(x264_t *h, ratecontrol_entry_t *rce, double rate_factor
     x264_ratecontrol_t *rcc= h->rc;
     x264_zone_t *zone = get_zone( h, frame_num );
     double q;
+    // 初始状态的qscale
+
+    /*
+    开启MB-Tree：
+        - 基于时间特征：考虑帧在时间轴上的重要性
+        - 动态分析：MB-tree会分析帧间依赖关系
+        - 时间权重：不同持续时间的帧有不同的感知重要性
+    */
     if( h->param.rc.b_mb_tree )
     {
         double timescale = (double)h->sps->vui.i_num_units_in_tick / h->sps->vui.i_time_scale;
         log_trace("[rc][start][qscale]BASE_FRAME_DURATION=%f,CLIP_DURATION=%f,rce->i_duration=%d,timescale=%f,f_qcompress=%f",
             BASE_FRAME_DURATION, CLIP_DURATION(rce->i_duration * timescale), rce->i_duration, timescale, h->param.rc.f_qcompress);
+
+        // BASE_FRAME_DURATION = 0.04秒： 对应25fps：作为标准帧率的基准，25fps是视频编码的传统基准帧率
+        /*
+        帧率对视觉质量的影响
+            高帧率（短持续时间）：
+            - 时间掩蔽效应强 → 可以容忍更多压缩伪影
+            - 运动模糊小 → 细节更重要
+            - 应对策略：相对提高qscale
+
+            低帧率（长持续时间）：
+            - 时间掩蔽效应弱 → 需要更高单帧质量
+            - 静止时间长 → 伪影更易察觉
+            - 应对策略：相对降低qscale
+        BASE_FRAME_DURATION / CLIP_DURATION(rce->i_duration * timescale)的含义：
+            > 1：当前帧比标准帧短（高帧率）
+            < 1：当前帧比标准帧长（低帧率）
+            = 1：标准帧率（25fps）
+        */
         q = pow( BASE_FRAME_DURATION / CLIP_DURATION(rce->i_duration * timescale), 1 - h->param.rc.f_qcompress );
     }
+    // 传统：基于内容复杂度：blurred_complexity是帧的纹理复杂度
     else
         q = pow( rce->blurred_complexity, 1 - rcc->qcompress );
 
-    // avoid NaN's in the rc_eq
+    // 异常情况：avoid NaN's in the rc_eq
     if( !isfinite(q) || rce->tex_bits + rce->mv_bits == 0 )
+        // 使用同类型帧的历史qscale
         q = rcc->last_qscale_for[rce->pict_type];
-    else
+    else // 正常情况
     {
         rcc->last_rceq = q;
+        // crf： ratefactor = crf
+        // abr： ratefactor = 目标比特窗口 / 复杂度总和
         q /= rate_factor;
         rcc->last_qscale = q;
         log_trace("[rc][start][qscale]rcc->last_rceq:%f,rcc->last_qscale:%f", rcc->last_rceq, rcc->last_qscale);
@@ -2055,14 +2124,18 @@ static void update_predictor( predictor_t *p, float q, float var, float bits )
 }
 
 // update VBV after encoding a frame
+// 输入：bits - 当前帧实际编码后的比特数
+// 输出：filler - 需要添加的填充比特数
+// 作用：模拟解码器的VBV缓冲区状态更新
 static int update_vbv( x264_t *h, int bits )
 {
     int filler = 0;
     int bitrate = h->sps->vui.hrd.i_bit_rate_unscaled;
-    x264_ratecontrol_t *rcc = h->rc;
-    x264_ratecontrol_t *rct = h->thread[0]->rc;
+    x264_ratecontrol_t *rcc = h->rc; // 当前线程
+    x264_ratecontrol_t *rct = h->thread[0]->rc; // 主线程，多线程编码时需要同步信息到主线程
     int64_t buffer_size = (int64_t)h->sps->vui.hrd.i_cpb_size_unscaled * h->sps->vui.i_time_scale;
 
+    // 用实际的QP、SATD、比特数更新对应帧类型的预测模型，让未来的比特数预测更准确
     if( rcc->last_satd >= h->mb.i_mb_count ) {
         log_trace("[rc][end][vbv]update rct->pred[%d]", h->sh.i_type);
         update_predictor( &rct->pred[h->sh.i_type], qp2qscale( rcc->qpa_rc ), rcc->last_satd, bits );
@@ -2071,12 +2144,14 @@ static int update_vbv( x264_t *h, int bits )
     if( !rcc->b_vbv )
         return filler;
 
+    // 缓冲区消耗模拟：实际的码率
     uint64_t buffer_diff = (uint64_t)bits * h->sps->vui.i_time_scale;
     rct->buffer_fill_final -= buffer_diff;
     rct->buffer_fill_final_min -= buffer_diff;
     log_trace("[rc][end][vbv][in]bits=%d,buffer_fill_final=%"PRId64",buffer_fill_final_min=%"PRId64",buffer_diff=%"PRId64,
         bits, rct->buffer_fill_final, rct->buffer_fill_final_min, buffer_diff);
 
+    // 解码器饿死：实际编码码率太大了
     if( rct->buffer_fill_final_min < 0 )
     {
         double underflow = (double)rct->buffer_fill_final_min / h->sps->vui.i_time_scale;
@@ -2088,6 +2163,7 @@ static int update_vbv( x264_t *h, int bits )
         rct->buffer_fill_final_min = 0;
     }
 
+    // 缓冲区填充模拟：vbv-max-rate
     if( h->param.i_avcintra_class )
         buffer_diff = buffer_size;
     else
@@ -2097,8 +2173,10 @@ static int update_vbv( x264_t *h, int bits )
     log_trace("[rc][end][vbv][out]buffer_fill_final=%"PRId64",buffer_fill_final_min=%"PRId64",buffer_diff=%"PRId64,
         rct->buffer_fill_final, rct->buffer_fill_final_min, buffer_diff);
 
+    // 解码器撑死：实际编码码率太小了
     if( rct->buffer_fill_final > buffer_size )
     {
+        // 计算需要填充的bit数
         if( h->param.rc.b_filler )
         {
             int64_t scale = (int64_t)h->sps->vui.i_time_scale * 8;
@@ -2213,11 +2291,16 @@ static double vbv_pass1( x264_t *h, int pict_type, double q )
             for( int iterations = 0; iterations < 1000 && terminate != 3; iterations++ )
             {
                 double frame_q[3];
+                // 当前帧在qscale=q下的预估大小
                 double cur_bits = predict_size( &rcc->pred[h->sh.i_type], q, rcc->last_satd );
+                // 编码当前帧后的缓冲区填充度
                 double buffer_fill_cur = rcc->buffer_fill - cur_bits;
                 double target_fill;
+                // lookahead窗口中的总时长
                 double total_duration = 0;
+                // 当前帧的持续时间
                 double last_duration = fenc_cpb_duration;
+                // 根据P帧qscale推导I帧和B帧的qscale
                 frame_q[0] = h->sh.i_type == SLICE_TYPE_I ? q * h->param.rc.f_ip_factor : q;
                 frame_q[1] = frame_q[0] * h->param.rc.f_pb_factor;
                 frame_q[2] = frame_q[0] / h->param.rc.f_ip_factor;
@@ -2225,28 +2308,39 @@ static double vbv_pass1( x264_t *h, int pict_type, double q )
                 /* Loop over the planned future frames. */
                 for( int j = 0; buffer_fill_cur >= 0 && buffer_fill_cur <= rcc->buffer_size; j++ )
                 {
+                    // 按时间推进
                     total_duration += last_duration;
+                    // vbv buffer进：按vbv_max_rate进
                     buffer_fill_cur += rcc->vbv_max_rate * last_duration;
                     int i_type = h->fenc->i_planned_type[j];
                     int i_satd = h->fenc->i_planned_satd[j];
+                    // lookahead帧都已遍历结束
                     if( i_type == X264_TYPE_AUTO )
                         break;
                     i_type = IS_X264_TYPE_I( i_type ) ? SLICE_TYPE_I : IS_X264_TYPE_B( i_type ) ? SLICE_TYPE_B : SLICE_TYPE_P;
                     cur_bits = predict_size( &rcc->pred[i_type], frame_q[i_type], i_satd );
+                    // vbv buffer出：按预估的实际码率出
                     buffer_fill_cur -= cur_bits;
                     last_duration = h->fenc->f_planned_cpb_duration[j];
                 }
                 /* Try to get to get the buffer at least 50% filled, but don't set an impossible goal. */
+                // 理想：当前填充度 + 50%的最大填充速率
+                // 约束：缓冲区大小的50%
+                // 两者取最小
                 target_fill = X264_MIN( rcc->buffer_fill + total_duration * rcc->vbv_max_rate * 0.5, rcc->buffer_size * 0.5 );
                 log_trace("[rc][start][vbv][underflow]iterations=%d,cur_bits=%f,total_duration=%f,buffer_fill_cur:%f,target_fill:%f,q=%f",
                     iterations, cur_bits, total_duration, buffer_fill_cur, target_fill, q);
-                if( buffer_fill_cur < target_fill )
+                // 保持缓冲区至少50%填充
+                if (buffer_fill_cur < target_fill)
                 {
                     q *= 1.01;
                     terminate |= 1;
                     continue;
                 }
                 /* Try to get the buffer no more than 80% filled, but don't set an impossible goal. */
+                // 理想目标：当前填充度 - 50%的最大填充速率
+                // 上限约束：不超过缓冲区大小的80%
+                // 下限约束：不低于缓冲区大小的80%
                 target_fill = x264_clip3f( rcc->buffer_fill - total_duration * rcc->vbv_max_rate * 0.5, rcc->buffer_size * 0.8, rcc->buffer_size );
                 log_trace("[rc][start][vbv][overflow]iterations=%d,cur_bits=%f,total_duration=%f,buffer_fill_cur:%f,target_fill:%f,q=%f",
                     iterations, cur_bits, total_duration, buffer_fill_cur, target_fill, q);
@@ -2293,29 +2387,44 @@ static double vbv_pass1( x264_t *h, int pict_type, double q )
 
         /* Check B-frame complexity, and use up any bits that would
          * overflow before the next P-frame. */
+        // P帧的QP决策不仅影响P帧本身，还会影响依赖它的所有B帧，因此需要考虑整个mini-GOP的缓冲区消耗。
+        // 如果在前面的vbv流程中：P帧QP ↓ → P帧变大 → 后续B帧QP也↓ → B帧也变大 → 整个mini-GOP消耗增加
         if( h->sh.i_type == SLICE_TYPE_P && !rcc->single_frame_vbv )
         {
+            // b帧数量
             int nb = rcc->bframes;
+            // p帧大小
             double bits = predict_size( &rcc->pred[h->sh.i_type], q, rcc->last_satd );
+            // 初始大小：p帧大小
             double pbbits = bits;
+            // 单个b帧大小
             double bbits = predict_size( rcc->pred_b_from_p, q * h->param.rc.f_pb_factor, rcc->last_satd );
             double space;
             double bframe_cpb_duration = 0;
             double minigop_cpb_duration;
+
+            // 计算所有B帧的总CPB持续时间
             for( int i = 0; i < nb; i++ )
                 bframe_cpb_duration += h->fenc->f_planned_cpb_duration[i];
 
+            // 如果B帧总消耗超过其时间窗口内的最大可用比特，则忽略B帧影响
             if( bbits * nb > bframe_cpb_duration * rcc->vbv_max_rate )
             {
                 nb = 0;
                 bframe_cpb_duration = 0;
             }
-            pbbits += nb * bbits;
-
-            minigop_cpb_duration = bframe_cpb_duration + fenc_cpb_duration;
+            // Mini-GOP总消耗计算
+            pbbits += nb * bbits; // P帧 + 所有B帧的总大小
+            minigop_cpb_duration = bframe_cpb_duration + fenc_cpb_duration; // mini-GOP总时长
+            // space：当前填充 + 时间窗口内最大输入 - 缓冲区大小
             space = rcc->buffer_fill + minigop_cpb_duration*rcc->vbv_max_rate - rcc->buffer_size;
+
+            // mini-GOP消耗不足以填满过剩的空间，需要降低qscale
             if( pbbits < space )
             {
+                // pbbits / space - 按比例减少QP
+                // bits / (0.5 * rcc->buffer_size) - 基于P帧大小的保守调整
+                // 取较大值：避免过度降低QP
                 q *= X264_MAX( pbbits / space, bits / (0.5 * rcc->buffer_size) );
             }
             q = X264_MAX( q0/2, q );
@@ -2351,7 +2460,7 @@ static float rate_estimate_qscale( x264_t *h )
                       slice_type_to_char[pict_type], slice_type_to_char[rce.pict_type] );
         }
     }
-
+    /* B帧不独立控制码率，而是基于相邻参考帧的QP进行插值 */
     if( pict_type == SLICE_TYPE_B )
     {
         /* B-frames don't have independent ratecontrol, but rather get the
@@ -2489,7 +2598,7 @@ static float rate_estimate_qscale( x264_t *h )
              * tolerances, the bit distribution approaches that of 2pass. */
 
             double wanted_bits, overflow = 1;
-
+            // 当前帧复杂度
             rcc->last_satd = x264_rc_analyse_slice( h );
             rcc->short_term_cplxsum *= 0.5;
             rcc->short_term_cplxcount *= 0.5;
@@ -2519,6 +2628,7 @@ static float rate_estimate_qscale( x264_t *h )
 
                 /* ABR code can potentially be counterproductive in CBR, so just don't bother.
                  * Don't run it if the frame complexity is zero either. */
+                // CBR不处理，ABR的溢出限制
                 if( !rcc->b_vbv_min_rate && rcc->last_satd )
                 {
                     // FIXME is it simpler to keep track of wanted_bits in ratecontrol_end?
@@ -2529,7 +2639,12 @@ static float rate_estimate_qscale( x264_t *h )
                     wanted_bits = time_done * rcc->bitrate;
                     if( wanted_bits > 0 )
                     {
+                        // 自适应缓冲区
+                        // 初期：严格控制（小缓冲区）
+                        // 后期：宽松控制（大缓冲区，平方根增长）
                         abr_buffer *= X264_MAX( 1, sqrt( time_done ) );
+
+                        // 最多将qscale增加1倍，减小一半
                         overflow = x264_clip3f( 1.0 + (predicted_bits - wanted_bits) / abr_buffer, .5, 2 );
                         q *= overflow;
                     }
@@ -2538,6 +2653,7 @@ static float rate_estimate_qscale( x264_t *h )
                 }
             }
 
+            // 基于历史P帧QP估算I帧QP
             if( pict_type == SLICE_TYPE_I && h->param.i_keyint_max > 1
                 /* should test _next_ pict type, but that isn't decided yet */
                 && rcc->last_non_b_pict_type != SLICE_TYPE_I )
@@ -2549,6 +2665,7 @@ static float rate_estimate_qscale( x264_t *h )
             }
             else if( h->i_frame > 0 )
             {
+                // 防止质量剧烈波动
                 if( h->param.rc.i_rc_method != X264_RC_CRF )
                 {
                     /* Asymmetric clipping, because symmetric would prevent
@@ -2556,9 +2673,9 @@ static float rate_estimate_qscale( x264_t *h )
                     double lmin = rcc->last_qscale_for[pict_type] / rcc->lstep;
                     double lmax = rcc->last_qscale_for[pict_type] * rcc->lstep;
                     if( overflow > 1.1 && h->i_frame > 3 )
-                        lmax *= rcc->lstep;
+                        lmax *= rcc->lstep; // 溢出时放宽上限
                     else if( overflow < 0.9 )
-                        lmin /= rcc->lstep;
+                        lmin /= rcc->lstep; // 欠载时收紧下限
 
                     q = x264_clip3f(q, lmin, lmax);
                     log_trace("[rc][start]h->i_frame=%d,lmin=%f,lmax=%f,qscale=%f", h->i_frame, lmin, lmax, q);
@@ -2573,6 +2690,7 @@ static float rate_estimate_qscale( x264_t *h )
             q = vbv_pass1( h, pict_type, q );
         }
 
+        // 记录当前qscale用于下一帧参考
         rcc->last_qscale_for[pict_type] =
         rcc->last_qscale = q;
 
