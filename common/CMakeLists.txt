@@ -43,12 +43,15 @@ if(ENABLE_OPENCL)
     set(OPENCL_SOURCES ${OPENCL_HEADER} ${OPENCL_KERNELS})
 
     set(OCLOBJ_H ${CMAKE_CURRENT_SOURCE_DIR}/oclobj.h)
-    set(CLTOSTR_SCRIPT ${PROJECT_SOURCE_DIR}/tools/cltostr.sh)
+    set(CLTOSTR_CMAKE ${PROJECT_SOURCE_DIR}/cmake/CLToStr.cmake)
 
     add_custom_command(
         OUTPUT ${OCLOBJ_H}
-        COMMAND cat ${OPENCL_SOURCES} | sh ${CLTOSTR_SCRIPT} ${OCLOBJ_H}
-        DEPENDS ${OPENCL_SOURCES} ${CLTOSTR_SCRIPT}
+        COMMAND ${CMAKE_COMMAND}
+            -DOUTPUT_FILE=${OCLOBJ_H}
+            -DINPUT_FILES="${OPENCL_SOURCES}"
+            -P ${CLTOSTR_CMAKE}
+        DEPENDS ${OPENCL_SOURCES} ${CLTOSTR_CMAKE}
         COMMENT "Generating oclobj.h from OpenCL kernel sources"
         VERBATIM
     )
