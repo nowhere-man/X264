@@ -422,7 +422,7 @@ static int validate_parameters(x264_t *h, int b_open)
         }
 #endif
         if (fail) {
-            x264_log(h, X264_LOG_ERROR, "to run x264, recompile without asm (configure --disable-asm)\n");
+            x264_log(h, X264_LOG_ERROR, "to run x264, recompile without asm (cmake -DENABLE_ASM=OFF ...)\n");
             return -1;
         }
     }
