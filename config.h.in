@@ -38,17 +38,67 @@
 #define HAVE_SVE2 @HAS_SVE2@
 
 #define HAVE_BEOSTHREAD 0
-#define HAVE_BITDEPTH8 1
-#define HAVE_BITDEPTH10 0
-#define CHROMA_FORMAT CHROMA_420
+
+// Bit depth support
+#cmakedefine HAVE_BITDEPTH8 @HAVE_BITDEPTH8@
+#cmakedefine HAVE_BITDEPTH10 @HAVE_BITDEPTH10@
+
+// Chroma format
+#cmakedefine X264_CHROMA_FORMAT_DEFINED
+#ifdef X264_CHROMA_FORMAT_DEFINED
+#define CHROMA_FORMAT @X264_CHROMA_FLAG@
+#endif
+
+// External libraries
+#cmakedefine HAVE_SWSCALE @HAVE_SWSCALE@
+#cmakedefine HAVE_LAVF @HAVE_LAVF@
+#cmakedefine HAVE_FFMS @HAVE_FFMS@
+#cmakedefine HAVE_GPAC @HAVE_GPAC@
+#cmakedefine HAVE_AVS @HAVE_AVS@
+#cmakedefine HAVE_LSMASH @HAVE_LSMASH@
+
+// PowerPC optimizations
+#cmakedefine HAVE_ALTIVEC @HAVE_ALTIVEC@
+#cmakedefine HAVE_ALTIVEC_H @HAVE_ALTIVEC_H@
+
+// Intel Dispatcher
+#cmakedefine HAVE_INTEL_DISPATCHER @HAVE_INTEL_DISPATCHER@
+
+// MIPS/LoongArch optimizations
+#cmakedefine HAVE_MSA @HAVE_MSA@
+#cmakedefine HAVE_LSX @HAVE_LSX@
+
+// Currently undefined (not implemented)
+#ifndef HAVE_SWSCALE
 #define HAVE_SWSCALE 0
+#endif
+#ifndef HAVE_LAVF
 #define HAVE_LAVF 0
+#endif
+#ifndef HAVE_FFMS
 #define HAVE_FFMS 0
+#endif
+#ifndef HAVE_GPAC
 #define HAVE_GPAC 0
+#endif
+#ifndef HAVE_AVS
 #define HAVE_AVS 0
+#endif
+#ifndef HAVE_LSMASH
 #define HAVE_LSMASH 0
+#endif
+#ifndef HAVE_ALTIVEC
 #define HAVE_ALTIVEC 0
+#endif
+#ifndef HAVE_ALTIVEC_H
 #define HAVE_ALTIVEC_H 0
+#endif
+#ifndef HAVE_INTEL_DISPATCHER
 #define HAVE_INTEL_DISPATCHER 0
+#endif
+#ifndef HAVE_MSA
 #define HAVE_MSA 0
+#endif
+#ifndef HAVE_LSX
 #define HAVE_LSX 0
+#endif

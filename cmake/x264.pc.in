@@ -1,0 +1,11 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=@CMAKE_INSTALL_LIBDIR@
+includedir=@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: x264
+Description: H.264 (MPEG4 AVC) encoder library
+Version: @X264_POINTVER@
+Libs: -L${libdir} -lx264@X264_PC_LIBS_SUFFIX@
+Libs.private:@X264_PC_LIBS_PRIVATE@
+Cflags: -I${includedir}@X264_PC_CFLAGS@

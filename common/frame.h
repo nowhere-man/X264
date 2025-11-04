@@ -273,6 +273,7 @@ X264_API void          x264_frame_push( x264_frame_t **list, x264_frame_t *frame
 
 /// @brief 移除list末尾的frame，并返回该frame
 /// @note x264_frame_t *x264_frame_pop(x264_frame_t **list)
+#define x264_frame_pop x264_template(frame_pop)
 X264_API x264_frame_t *x264_frame_pop( x264_frame_t **list );
 
 /// @brief 将frame插入到list首位
