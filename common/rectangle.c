@@ -25,33 +25,30 @@
 
 #include "common.h"
 
-#define CACHE_FUNC(name,size,width,height)\
-static void macroblock_cache_##name##_##width##_##height( void *target, uint32_t val )\
-{\
-    x264_macroblock_cache_rect( target, width*size, height, size, val );\
-}
+#define CACHE_FUNC(name, size, width, height)                                            \
+    static void macroblock_cache_##name##_##width##_##height(void *target, uint32_t val) \
+    {                                                                                    \
+        x264_macroblock_cache_rect(target, width * size, height, size, val);             \
+    }
 
-#define CACHE_FUNCS(name,size)\
-CACHE_FUNC(name,size,4,4)\
-CACHE_FUNC(name,size,2,4)\
-CACHE_FUNC(name,size,4,2)\
-CACHE_FUNC(name,size,2,2)\
-CACHE_FUNC(name,size,2,1)\
-CACHE_FUNC(name,size,1,2)\
-CACHE_FUNC(name,size,1,1)\
-void (*x264_cache_##name##_func_table[10])(void *, uint32_t) =\
-{\
-    macroblock_cache_##name##_1_1,\
-    macroblock_cache_##name##_2_1,\
-    macroblock_cache_##name##_1_2,\
-    macroblock_cache_##name##_2_2,\
-    NULL,\
-    macroblock_cache_##name##_4_2,\
-    NULL,\
-    macroblock_cache_##name##_2_4,\
-    NULL,\
-    macroblock_cache_##name##_4_4\
-};\
+#define CACHE_FUNCS(name, size)                                                                    \
+    CACHE_FUNC(name, size, 4, 4)                                                                   \
+    CACHE_FUNC(name, size, 2, 4)                                                                   \
+    CACHE_FUNC(name, size, 4, 2)                                                                   \
+    CACHE_FUNC(name, size, 2, 2)                                                                   \
+    CACHE_FUNC(name, size, 2, 1)                                                                   \
+    CACHE_FUNC(name, size, 1, 2)                                                                   \
+    CACHE_FUNC(name, size, 1, 1)                                                                   \
+    void (*x264_cache_##name##_func_table[10])(void *, uint32_t) = {macroblock_cache_##name##_1_1, \
+                                                                    macroblock_cache_##name##_2_1, \
+                                                                    macroblock_cache_##name##_1_2, \
+                                                                    macroblock_cache_##name##_2_2, \
+                                                                    NULL,                          \
+                                                                    macroblock_cache_##name##_4_2, \
+                                                                    NULL,                          \
+                                                                    macroblock_cache_##name##_2_4, \
+                                                                    NULL,                          \
+                                                                    macroblock_cache_##name##_4_4};
 
 CACHE_FUNCS(mv, 4)
 CACHE_FUNCS(mvd, 2)

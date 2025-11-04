@@ -2,10 +2,7 @@
 #include "timer.h"
 #include "log.h"
 
-void timer_start(x264_clock_t* clk)
-{
-    clk->base = x264_mdate();
-}
+void timer_start(x264_clock_t* clk) { clk->base = x264_mdate(); }
 
 void timer_end(x264_clock_t* clk)
 {

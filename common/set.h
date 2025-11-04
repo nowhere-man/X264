@@ -27,23 +27,15 @@
 #ifndef X264_SET_H
 #define X264_SET_H
 
-enum cqm4_e
-{
-    CQM_4IY = 0,
-    CQM_4PY = 1,
-    CQM_4IC = 2,
-    CQM_4PC = 3
-};
-enum cqm8_e
-{
+enum cqm4_e { CQM_4IY = 0, CQM_4PY = 1, CQM_4IC = 2, CQM_4PC = 3 };
+enum cqm8_e {
     CQM_8IY = 0,
     CQM_8PY = 1,
     CQM_8IC = 2,
     CQM_8PC = 3,
 };
 
-typedef struct
-{
+typedef struct {
     int i_id;
 
     int i_profile_idc;
@@ -69,8 +61,7 @@ typedef struct
     int b_direct8x8_inference;
 
     int b_crop;
-    struct
-    {
+    struct {
         int i_left;
         int i_right;
         int i_top;
@@ -78,8 +69,7 @@ typedef struct
     } crop;
 
     int b_vui;
-    struct
-    {
+    struct {
         int b_aspect_ratio_info_present;
         int i_sar_width;
         int i_sar_height;
@@ -107,8 +97,7 @@ typedef struct
         int b_nal_hrd_parameters_present;
         int b_vcl_hrd_parameters_present;
 
-        struct
-        {
+        struct {
             int i_cpb_cnt;
             int i_bit_rate_scale;
             int i_cpb_size_scale;
@@ -147,8 +136,7 @@ typedef struct
 
 } x264_sps_t;
 
-typedef struct
-{
+typedef struct {
     int i_id;
     int i_sps_id;
 
@@ -177,10 +165,10 @@ typedef struct
 } x264_pps_t;
 
 #define x264_cqm_init x264_template(cqm_init)
-int  x264_cqm_init( x264_t *h );
+int x264_cqm_init(x264_t *h);
 #define x264_cqm_delete x264_template(cqm_delete)
-void x264_cqm_delete( x264_t *h );
+void x264_cqm_delete(x264_t *h);
 #define x264_cqm_parse_file x264_template(cqm_parse_file)
-int  x264_cqm_parse_file( x264_t *h, const char *filename );
+int x264_cqm_parse_file(x264_t *h, const char *filename);
 
 #endif

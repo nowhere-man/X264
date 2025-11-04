@@ -26,14 +26,18 @@
 
 #include "common.h"
 
-static uint8_t *nal_escape_c( uint8_t *dst, uint8_t *src, uint8_t *end )
+static uint8_t *nal_escape_c(uint8_t *dst, uint8_t *src, uint8_t *end)
 {
-    if( src < end ) *dst++ = *src++;
-    if( src < end ) *dst++ = *src++;
-    while( src < end )
-    {
-        if( src[0] <= 0x03 && !dst[-2] && !dst[-1] )
+    if (src < end) {
+        *dst++ = *src++;
+    }
+    if (src < end) {
+        *dst++ = *src++;
+    }
+    while (src < end) {
+        if (src[0] <= 0x03 && !dst[-2] && !dst[-1]) {
             *dst++ = 0x03;
+        }
         *dst++ = *src++;
     }
     return dst;
@@ -52,44 +56,41 @@ static uint8_t *nal_escape_c( uint8_t *dst, uint8_t *src, uint8_t *end )
 /****************************************************************************
  * x264_nal_encode:
  ****************************************************************************/
-void x264_nal_encode( x264_t *h, uint8_t *dst, x264_nal_t *nal )
+void x264_nal_encode(x264_t *h, uint8_t *dst, x264_nal_t *nal)
 {
     uint8_t *src = nal->p_payload;
     uint8_t *end = nal->p_payload + nal->i_payload;
     uint8_t *orig_dst = dst;
 
-    if( h->param.b_annexb )
-    {
-        if( nal->b_long_startcode )
+    if (h->param.b_annexb) {
+        if (nal->b_long_startcode) {
             *dst++ = 0x00;
+        }
         *dst++ = 0x00;
         *dst++ = 0x00;
         *dst++ = 0x01;
-    }
-    else /* save room for size later */
+    } else { /* save room for size later */
         dst += 4;
+    }
 
     /* nal header */
-    *dst++ = ( 0x00 << 7 ) | ( nal->i_ref_idc << 5 ) | nal->i_type;
+    *dst++ = (0x00 << 7) | (nal->i_ref_idc << 5) | nal->i_type;
 
-    dst = h->bsf.nal_escape( dst, src, end );
+    dst = h->bsf.nal_escape(dst, src, end);
     int size = dst - orig_dst;
 
     /* Apply AVC-Intra padding */
-    if( h->param.i_avcintra_class )
-    {
+    if (h->param.i_avcintra_class) {
         int padding = nal->i_payload + nal->i_padding + NALU_OVERHEAD - size;
-        if( padding > 0 )
-        {
-            memset( dst, 0, padding );
+        if (padding > 0) {
+            memset(dst, 0, padding);
             size += padding;
         }
-        nal->i_padding = X264_MAX( padding, 0 );
+        nal->i_padding = X264_MAX(padding, 0);
     }
 
     /* Write the size header for mp4/etc */
-    if( !h->param.b_annexb )
-    {
+    if (!h->param.b_annexb) {
         /* Size doesn't include the size of the header we're writing now. */
         int chunk_size = size - 4;
         orig_dst[0] = (uint8_t)(chunk_size >> 24);
@@ -103,9 +104,9 @@ void x264_nal_encode( x264_t *h, uint8_t *dst, x264_nal_t *nal )
     x264_emms();
 }
 
-void x264_bitstream_init( uint32_t cpu, x264_bitstream_function_t *pf )
+void x264_bitstream_init(uint32_t cpu, x264_bitstream_function_t *pf)
 {
-    memset( pf, 0, sizeof(*pf) );
+    memset(pf, 0, sizeof(*pf));
 
     pf->nal_escape = nal_escape_c;
 #if HAVE_MMX
@@ -115,40 +116,36 @@ void x264_bitstream_init( uint32_t cpu, x264_bitstream_function_t *pf )
     pf->cabac_block_residual_8x8_rd_internal = x264_cabac_block_residual_8x8_rd_internal_sse2;
 #endif
 
-    if( cpu&X264_CPU_MMX2 )
+    if (cpu & X264_CPU_MMX2) {
         pf->nal_escape = x264_nal_escape_mmx2;
-    if( cpu&X264_CPU_SSE2 )
-    {
-        if( cpu&X264_CPU_SSE2_IS_FAST )
+    }
+    if (cpu & X264_CPU_SSE2) {
+        if (cpu & X264_CPU_SSE2_IS_FAST) {
             pf->nal_escape = x264_nal_escape_sse2;
+        }
     }
 #if ARCH_X86_64
-    if( cpu&X264_CPU_LZCNT )
-    {
+    if (cpu & X264_CPU_LZCNT) {
         pf->cabac_block_residual_internal = x264_cabac_block_residual_internal_lzcnt;
         pf->cabac_block_residual_rd_internal = x264_cabac_block_residual_rd_internal_lzcnt;
         pf->cabac_block_residual_8x8_rd_internal = x264_cabac_block_residual_8x8_rd_internal_lzcnt;
     }
 
-    if( cpu&X264_CPU_SSSE3 )
-    {
+    if (cpu & X264_CPU_SSSE3) {
         pf->cabac_block_residual_rd_internal = x264_cabac_block_residual_rd_internal_ssse3;
         pf->cabac_block_residual_8x8_rd_internal = x264_cabac_block_residual_8x8_rd_internal_ssse3;
-        if( cpu&X264_CPU_LZCNT )
-        {
+        if (cpu & X264_CPU_LZCNT) {
             pf->cabac_block_residual_rd_internal = x264_cabac_block_residual_rd_internal_ssse3_lzcnt;
             pf->cabac_block_residual_8x8_rd_internal = x264_cabac_block_residual_8x8_rd_internal_ssse3_lzcnt;
         }
     }
 
-    if( cpu&X264_CPU_AVX2 )
-    {
+    if (cpu & X264_CPU_AVX2) {
         pf->nal_escape = x264_nal_escape_avx2;
         pf->cabac_block_residual_internal = x264_cabac_block_residual_internal_avx2;
     }
 
-    if( cpu&X264_CPU_AVX512 )
-    {
+    if (cpu & X264_CPU_AVX512) {
         pf->cabac_block_residual_internal = x264_cabac_block_residual_internal_avx512;
         pf->cabac_block_residual_rd_internal = x264_cabac_block_residual_rd_internal_avx512;
         pf->cabac_block_residual_8x8_rd_internal = x264_cabac_block_residual_8x8_rd_internal_avx512;
@@ -156,11 +153,13 @@ void x264_bitstream_init( uint32_t cpu, x264_bitstream_function_t *pf )
 #endif
 #endif
 #if HAVE_ARMV6
-    if( cpu&X264_CPU_NEON )
+    if (cpu & X264_CPU_NEON) {
         pf->nal_escape = x264_nal_escape_neon;
+    }
 #endif
 #if HAVE_AARCH64
-    if( cpu&X264_CPU_NEON )
+    if (cpu & X264_CPU_NEON) {
         pf->nal_escape = x264_nal_escape_neon;
+    }
 #endif
 }

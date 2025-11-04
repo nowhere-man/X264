@@ -27,8 +27,7 @@
 #ifndef X264_TABLES_H
 #define X264_TABLES_H
 
-typedef struct
-{
+typedef struct {
     uint8_t i_bits;
     uint8_t i_size;
 } vlc_t;
@@ -36,15 +35,15 @@ typedef struct
 X264_API extern const x264_level_t x264_levels[];
 
 extern const uint8_t x264_exp2_lut[64];
-extern const float   x264_log2_lut[128];
-extern const float   x264_log2_lz_lut[32];
+extern const float x264_log2_lut[128];
+extern const float x264_log2_lz_lut[32];
 
-#define QP_MAX_MAX (51+6*2+18)
-extern const uint16_t x264_lambda_tab[QP_MAX_MAX+1];
-extern const int      x264_lambda2_tab[QP_MAX_MAX+1];
-extern const int      x264_trellis_lambda2_tab[2][QP_MAX_MAX+1];
+#define QP_MAX_MAX (51 + 6 * 2 + 18)
+extern const uint16_t x264_lambda_tab[QP_MAX_MAX + 1];
+extern const int x264_lambda2_tab[QP_MAX_MAX + 1];
+extern const int x264_trellis_lambda2_tab[2][QP_MAX_MAX + 1];
 #define MAX_CHROMA_LAMBDA_OFFSET 36
-extern const uint16_t x264_chroma_lambda2_offset_tab[MAX_CHROMA_LAMBDA_OFFSET+1];
+extern const uint16_t x264_chroma_lambda2_offset_tab[MAX_CHROMA_LAMBDA_OFFSET + 1];
 
 extern const uint8_t x264_hpel_ref0[16];
 extern const uint8_t x264_hpel_ref1[16];
@@ -54,7 +53,7 @@ extern const uint8_t x264_cqm_jvt4p[16];
 extern const uint8_t x264_cqm_jvt8i[64];
 extern const uint8_t x264_cqm_jvt8p[64];
 extern const uint8_t x264_cqm_flat16[64];
-extern const uint8_t * const x264_cqm_jvt[8];
+extern const uint8_t* const x264_cqm_jvt[8];
 extern const uint8_t x264_cqm_avci50_4ic[16];
 extern const uint8_t x264_cqm_avci50_p_8iy[64];
 extern const uint8_t x264_cqm_avci50_1080i_8iy[64];
@@ -75,20 +74,20 @@ extern const uint32_t x264_dct8_weight_tab[64];
 extern const uint32_t x264_dct4_weight2_tab[16];
 extern const uint32_t x264_dct8_weight2_tab[64];
 
-extern const int8_t   x264_cabac_context_init_I[1024][2];
-extern const int8_t   x264_cabac_context_init_PB[3][1024][2];
-extern const uint8_t  x264_cabac_range_lps[64][4];
-extern const uint8_t  x264_cabac_transition[128][2];
-extern const uint8_t  x264_cabac_renorm_shift[64];
+extern const int8_t x264_cabac_context_init_I[1024][2];
+extern const int8_t x264_cabac_context_init_PB[3][1024][2];
+extern const uint8_t x264_cabac_range_lps[64][4];
+extern const uint8_t x264_cabac_transition[128][2];
+extern const uint8_t x264_cabac_renorm_shift[64];
 extern const uint16_t x264_cabac_entropy[128];
 
-extern const uint8_t  x264_significant_coeff_flag_offset_8x8[2][64];
-extern const uint8_t  x264_last_coeff_flag_offset_8x8[63];
-extern const uint8_t  x264_coeff_flag_offset_chroma_422_dc[7];
+extern const uint8_t x264_significant_coeff_flag_offset_8x8[2][64];
+extern const uint8_t x264_last_coeff_flag_offset_8x8[63];
+extern const uint8_t x264_coeff_flag_offset_chroma_422_dc[7];
 extern const uint16_t x264_significant_coeff_flag_offset[2][16];
 extern const uint16_t x264_last_coeff_flag_offset[2][16];
 extern const uint16_t x264_coeff_abs_level_m1_offset[16];
-extern const uint8_t  x264_count_cat_m1[14];
+extern const uint8_t x264_count_cat_m1[14];
 
 extern const vlc_t x264_coeff0_token[6];
 extern const vlc_t x264_coeff_token[6][16][4];

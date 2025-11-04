@@ -27,69 +27,67 @@
 #define X264_LOONGARCH_DCT_H
 
 #define x264_sub8x8_dct_lasx x264_template(sub8x8_dct_lasx)
-void x264_sub8x8_dct_lasx( int16_t p_dst[4][16], uint8_t *p_src, uint8_t *p_ref );
+void x264_sub8x8_dct_lasx(int16_t p_dst[4][16], uint8_t *p_src, uint8_t *p_ref);
 #define x264_sub16x16_dct_lasx x264_template(sub16x16_dct_lasx)
-void x264_sub16x16_dct_lasx( int16_t p_dst[16][16], uint8_t *p_src, uint8_t *p_ref );
+void x264_sub16x16_dct_lasx(int16_t p_dst[16][16], uint8_t *p_src, uint8_t *p_ref);
 
 #define x264_sub8x8_dct8_lsx x264_template(sub8x8_dct8_lsx)
-void x264_sub8x8_dct8_lsx( int16_t pi_dct[64], uint8_t *p_pix1, uint8_t *p_pix2 );
+void x264_sub8x8_dct8_lsx(int16_t pi_dct[64], uint8_t *p_pix1, uint8_t *p_pix2);
 #define x264_sub16x16_dct8_lasx x264_template(sub16x16_dct8_lasx)
-void x264_sub16x16_dct8_lasx( int16_t pi_dct[4][64], uint8_t *p_pix1,
-                              uint8_t *p_pix2 );
+void x264_sub16x16_dct8_lasx(int16_t pi_dct[4][64], uint8_t *p_pix1, uint8_t *p_pix2);
 
 #define x264_add4x4_idct_lsx x264_template(add4x4_idct_lsx)
-void x264_add4x4_idct_lsx( uint8_t *p_dst, int16_t pi_dct[16] );
+void x264_add4x4_idct_lsx(uint8_t *p_dst, int16_t pi_dct[16]);
 #define x264_add8x8_idct_lasx x264_template(add8x8_idct_lasx)
-void x264_add8x8_idct_lasx( uint8_t *p_dst, int16_t pi_dct[4][16] );
+void x264_add8x8_idct_lasx(uint8_t *p_dst, int16_t pi_dct[4][16]);
 #define x264_add16x16_idct_lasx x264_template(add16x16_idct_lasx)
-void x264_add16x16_idct_lasx( uint8_t *p_dst, int16_t pi_dct[16][16] );
+void x264_add16x16_idct_lasx(uint8_t *p_dst, int16_t pi_dct[16][16]);
 #define x264_add8x8_idct8_lasx x264_template(add8x8_idct8_lasx)
-void x264_add8x8_idct8_lasx( uint8_t *p_dst, int16_t pi_dct[64] );
+void x264_add8x8_idct8_lasx(uint8_t *p_dst, int16_t pi_dct[64]);
 #define x264_add8x8_idct_dc_lasx x264_template(add8x8_idct_dc_lasx)
-void x264_add8x8_idct_dc_lasx( uint8_t *p_dst, int16_t dct[4] );
+void x264_add8x8_idct_dc_lasx(uint8_t *p_dst, int16_t dct[4]);
 #define x264_add16x16_idct_dc_lasx x264_template(add16x16_idct_dc_lasx)
-void x264_add16x16_idct_dc_lasx( uint8_t *p_dst, int16_t dct[16] );
+void x264_add16x16_idct_dc_lasx(uint8_t *p_dst, int16_t dct[16]);
 
 #define x264_idct4x4dc_lasx x264_template(idct4x4dc_lasx)
-void x264_idct4x4dc_lasx( int16_t d[16] );
+void x264_idct4x4dc_lasx(int16_t d[16]);
 #define x264_dct4x4dc_lasx x264_template(dct4x4dc_lasx)
-void x264_dct4x4dc_lasx( int16_t d[16] );
+void x264_dct4x4dc_lasx(int16_t d[16]);
 
 #define x264_zigzag_scan_4x4_frame_lasx x264_template(zigzag_scan_4x4_frame_lasx)
-void x264_zigzag_scan_4x4_frame_lasx( int16_t level[16], int16_t dct[16] );
+void x264_zigzag_scan_4x4_frame_lasx(int16_t level[16], int16_t dct[16]);
 
 #define x264_sub4x4_dct_lsx x264_template(sub4x4_dct_lsx)
-void x264_sub4x4_dct_lsx( int16_t p_dst[16], uint8_t *p_src, uint8_t *p_ref );
+void x264_sub4x4_dct_lsx(int16_t p_dst[16], uint8_t *p_src, uint8_t *p_ref);
 #define x264_sub8x8_dct_lsx x264_template(sub8x8_dct_lsx)
-void x264_sub8x8_dct_lsx( int16_t p_dst[4][16], uint8_t *p_src, uint8_t *p_ref );
+void x264_sub8x8_dct_lsx(int16_t p_dst[4][16], uint8_t *p_src, uint8_t *p_ref);
 #define x264_sub16x16_dct_lsx x264_template(sub16x16_dct_lsx)
-void x264_sub16x16_dct_lsx( int16_t p_dst[16][16], uint8_t *p_src, uint8_t *p_ref );
+void x264_sub16x16_dct_lsx(int16_t p_dst[16][16], uint8_t *p_src, uint8_t *p_ref);
 
 #define x264_sub8x8_dct8_lsx x264_template(sub8x8_dct8_lsx)
-void x264_sub8x8_dct8_lsx( int16_t pi_dct[64], uint8_t *p_pix1, uint8_t *p_pix2 );
+void x264_sub8x8_dct8_lsx(int16_t pi_dct[64], uint8_t *p_pix1, uint8_t *p_pix2);
 #define x264_sub16x16_dct8_lsx x264_template(sub16x16_dct8_lsx)
-void x264_sub16x16_dct8_lsx( int16_t pi_dct[4][64], uint8_t *p_pix1,
-                              uint8_t *p_pix2 );
+void x264_sub16x16_dct8_lsx(int16_t pi_dct[4][64], uint8_t *p_pix1, uint8_t *p_pix2);
 
 #define x264_add4x4_idct_lsx x264_template(add4x4_idct_lsx)
-void x264_add4x4_idct_lsx( uint8_t *p_dst, int16_t pi_dct[16] );
+void x264_add4x4_idct_lsx(uint8_t *p_dst, int16_t pi_dct[16]);
 #define x264_add8x8_idct_lsx x264_template(add8x8_idct_lsx)
-void x264_add8x8_idct_lsx( uint8_t *p_dst, int16_t pi_dct[4][16] );
+void x264_add8x8_idct_lsx(uint8_t *p_dst, int16_t pi_dct[4][16]);
 #define x264_add16x16_idct_lsx x264_template(add16x16_idct_lsx)
-void x264_add16x16_idct_lsx( uint8_t *p_dst, int16_t pi_dct[16][16] );
+void x264_add16x16_idct_lsx(uint8_t *p_dst, int16_t pi_dct[16][16]);
 #define x264_add8x8_idct8_lsx x264_template(add8x8_idct8_lsx)
-void x264_add8x8_idct8_lsx( uint8_t *p_dst, int16_t pi_dct[64] );
+void x264_add8x8_idct8_lsx(uint8_t *p_dst, int16_t pi_dct[64]);
 #define x264_add8x8_idct_dc_lsx x264_template(add8x8_idct_dc_lsx)
-void x264_add8x8_idct_dc_lsx( uint8_t *p_dst, int16_t dct[4] );
+void x264_add8x8_idct_dc_lsx(uint8_t *p_dst, int16_t dct[4]);
 #define x264_add16x16_idct_dc_lsx x264_template(add16x16_idct_dc_lsx)
-void x264_add16x16_idct_dc_lsx( uint8_t *p_dst, int16_t dct[16] );
+void x264_add16x16_idct_dc_lsx(uint8_t *p_dst, int16_t dct[16]);
 
 #define x264_idct4x4dc_lsx x264_template(idct4x4dc_lsx)
-void x264_idct4x4dc_lsx( int16_t d[16] );
+void x264_idct4x4dc_lsx(int16_t d[16]);
 #define x264_dct4x4dc_lsx x264_template(dct4x4dc_lsx)
-void x264_dct4x4dc_lsx( int16_t d[16] );
+void x264_dct4x4dc_lsx(int16_t d[16]);
 
 #define x264_zigzag_scan_4x4_frame_lsx x264_template(zigzag_scan_4x4_frame_lsx)
-void x264_zigzag_scan_4x4_frame_lsx( int16_t level[16], int16_t dct[16] );
+void x264_zigzag_scan_4x4_frame_lsx(int16_t level[16], int16_t dct[16]);
 
 #endif

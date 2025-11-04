@@ -29,16 +29,16 @@
 /****************************************************************************
  * x264_log:
  ****************************************************************************/
-void x264_log( x264_t *h, int i_level, const char *psz_fmt, ... )
+void x264_log(x264_t *h, int i_level, const char *psz_fmt, ...)
 {
-    if( !h || i_level <= h->param.i_log_level )
-    {
+    if (!h || i_level <= h->param.i_log_level) {
         va_list arg;
-        va_start( arg, psz_fmt );
-        if( !h )
-            x264_log_default( NULL, i_level, psz_fmt, arg );
-        else
-            h->param.pf_log( h->param.p_log_private, i_level, psz_fmt, arg );
-        va_end( arg );
+        va_start(arg, psz_fmt);
+        if (!h) {
+            x264_log_default(NULL, i_level, psz_fmt, arg);
+        } else {
+            h->param.pf_log(h->param.p_log_private, i_level, psz_fmt, arg);
+        }
+        va_end(arg);
     }
 }

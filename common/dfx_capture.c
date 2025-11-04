@@ -130,7 +130,7 @@ void dfx_x264_encoder_open(struct x264_t* h)
     log_debug("h->mb.chroma_h_shift=%d", h->mb.chroma_h_shift);
     log_debug("h->mb.chroma_v_shift=%d", h->mb.chroma_v_shift);
     log_debug("h->mb.b_adaptive_mbaff=%d", h->mb.b_adaptive_mbaff);
-    log_debug("h->frames.i_delay=%d",  h->frames.i_delay);
+    log_debug("h->frames.i_delay=%d", h->frames.i_delay);
     log_debug("h->frames.i_bframe_delay=%d", h->frames.i_bframe_delay);
     log_debug("h->frames.i_max_ref0=%d", h->frames.i_max_ref0);
     log_debug("h->frames.i_max_ref1=%d", h->frames.i_max_ref1);
