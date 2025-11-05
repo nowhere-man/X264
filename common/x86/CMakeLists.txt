@@ -15,7 +15,7 @@ set(ASM_SRCS_10 const-a.asm cabac-a.asm dct-a.asm deblock-a.asm mc-a.asm
 )
 
 # Platform-specific assembly
-if(X86_64)
+if(ARCH_X86_64)
     list(APPEND ASM_SRCS_8 dct-64.asm trellis-64.asm)
     list(APPEND ASM_SRCS_10 dct-64.asm trellis-64.asm)
 else()

@@ -2,7 +2,7 @@
 # This module sets up default compiler flags for specific architectures to match autotools behavior
 
 # x86 (32-bit) specific flags
-if(X86 AND NOT X86_64)
+if(ARCH_X86)
     if(GCC OR CLANG)
         # Default to i686 and SSE/SSE2 for x86 (matching configure defaults)
         if(NOT CMAKE_C_FLAGS MATCHES "-march")
@@ -24,7 +24,7 @@ if(X86 AND NOT X86_64)
 endif()
 
 # ARM (32-bit) specific flags
-if(ARM AND NOT ARM64)
+if(ARCH_ARM)
     if(GCC OR CLANG)
         # Check if user already specified -mcpu, -march, or -mfpu
         if(NOT CMAKE_C_FLAGS MATCHES "-mcpu" AND NOT CMAKE_C_FLAGS MATCHES "-march" AND NOT CMAKE_C_FLAGS MATCHES "-mfpu")
@@ -45,7 +45,7 @@ if(ARM AND NOT ARM64)
 endif()
 
 # AArch64 (ARM64) specific flags
-if(ARM64)
+if(ARCH_AARCH64)
     if(SYS_MACOSX)
         # macOS ARM64
         if(NOT CMAKE_C_FLAGS MATCHES "-arch")
@@ -57,7 +57,7 @@ if(ARM64)
 endif()
 
 # x86_64 specific flags
-if(X86_64)
+if(ARCH_X86_64)
     if(GCC OR CLANG)
         # Ensure 64-bit build
         if(NOT APPLE)

@@ -62,12 +62,16 @@
 #define strncasecmp _strnicmp
 #define strtok_r strtok_s
 #define S_ISREG(x) (((x) & S_IFMT) == S_IFREG)
-/* MSVC uses _aligned_malloc instead of memalign */
+#else
+#include <strings.h>
+#endif
+
+/* Windows (MSVC and MinGW) uses _aligned_malloc instead of memalign */
+#ifdef _WIN32
 #define HAVE_MALLOC_H 1
 #define memalign(a, b) _aligned_malloc(b, a)
 #define x264_free_aligned(p) _aligned_free(p)
 #else
-#include <strings.h>
 #define x264_free_aligned(p) free(p)
 #endif
 
