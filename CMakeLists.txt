@@ -37,6 +37,19 @@ option(ENABLE_LTO         "Enable link-time optimizations"                    OF
 option(ENABLE_ASAN        "Enable address sanitizer"                          OFF)
 option(ENABLE_PIC         "Build position-independent code"                   OFF)
 
+# determine whether PIC is required
+set(X264_ENABLE_PIC OFF)
+if(BUILD_SHARED_LIBS)
+    set(X264_ENABLE_PIC ON)
+elseif(ENABLE_PIC)
+    set(X264_ENABLE_PIC ON)
+endif()
+if(X264_ENABLE_PIC)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+else()
+    set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
+endif()
+
 # external libs
 set(ENABLE_AVS     "auto" CACHE STRING "Avisynth support (auto/on/off)")
 set_property(CACHE ENABLE_AVS PROPERTY STRINGS auto on off)
@@ -51,20 +64,7 @@ set_property(CACHE ENABLE_GPAC PROPERTY STRINGS auto on off)
 set(ENABLE_LSMASH  "auto" CACHE STRING "L-SMASH support (auto/on/off)")
 set_property(CACHE ENABLE_LSMASH PROPERTY STRINGS auto on off)
 
-# determine whether PIC is required
-set(X264_ENABLE_PIC OFF)
-if(BUILD_SHARED_LIBS)
-    set(X264_ENABLE_PIC ON)
-elseif(ENABLE_PIC)
-    set(X264_ENABLE_PIC ON)
-endif()
-if(X264_ENABLE_PIC)
-    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-else()
-    set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
-endif()
-
-# Bit depth (8, 10, all) [8 by default]
+# bit depth (8, 10, all) [8 by default]
 if(NOT DEFINED X264_BIT_DEPTH)
     set(X264_BIT_DEPTH "8" CACHE STRING "Output bit depth (8, 10, or all)")
     set_property(CACHE X264_BIT_DEPTH PROPERTY STRINGS "8" "10" "all")
@@ -73,7 +73,7 @@ if(NOT X264_BIT_DEPTH MATCHES "^(8|10|all)$")
     message(FATAL_ERROR "X264_BIT_DEPTH must be 8, 10, or all (got: ${X264_BIT_DEPTH})")
 endif()
 
-# Chroma format (400, 420, 422, 444, all) [420 by default]
+# chroma format (400, 420, 422, 444, all) [420 by default]
 if(NOT DEFINED X264_CHROMA_FORMAT)
     set(X264_CHROMA_FORMAT "420" CACHE STRING "Output chroma format (400, 420, 422, 444, or all)")
     set_property(CACHE X264_CHROMA_FORMAT PROPERTY STRINGS "400" "420" "422" "444" "all")
@@ -81,16 +81,16 @@ endif()
 if(NOT X264_CHROMA_FORMAT MATCHES "^(400|420|422|444|all)$")
     message(FATAL_ERROR "X264_CHROMA_FORMAT must be 400, 420, 422, 444, or all (got: ${X264_CHROMA_FORMAT})")
 endif()
-
-# Chroma format
 if(X264_CHROMA_FORMAT STREQUAL "all")
     set(X264_CHROMA_FLAG 0)
 else()
     set(X264_CHROMA_FLAG "X264_CSP_I${X264_CHROMA_FORMAT}")
 endif()
 
-# build directories
-set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/install)
+# install directories
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/install CACHE PATH "Installation directory" FORCE)
+endif()
 set(CMAKE_INSTALL_BINDIR ${CMAKE_INSTALL_PREFIX}/bin)
 set(CMAKE_INSTALL_LIBDIR ${CMAKE_INSTALL_PREFIX}/lib)
 set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_PREFIX}/include)
@@ -99,12 +99,20 @@ message("CMAKE_INSTALL_BINDIR          : " ${CMAKE_INSTALL_BINDIR})
 message("CMAKE_INSTALL_LIBDIR          : " ${CMAKE_INSTALL_LIBDIR})
 message("CMAKE_INSTALL_INCLUDEDIR      : " ${CMAKE_INSTALL_INCLUDEDIR})
 
-# print environment information
+# system
 message("CMAKE_SYSTEM_NAME             : " ${CMAKE_SYSTEM_NAME})
 message("CMAKE_SYSTEM_PROCESSOR        : " ${CMAKE_SYSTEM_PROCESSOR})
-message("CMAKE_CXX_COMPILER_ID         : " ${CMAKE_C_COMPILER_ID})
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(SYS_LINUX 1)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(SYS_WINDOWS 1)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(SYS_MACOSX 1)
+else()
+    message(FATAL_ERROR "Detected unknown target platform: " ${CMAKE_SYSTEM_NAME})
+endif()
 
-# cpu architecture detection
+# cpu architecture
 string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} CPU)
 set(CPU_X86 x86 i386 i686 x86_64 amd64)
 set(CPU_ARM armv6l armv7l arm64 aarch64)
@@ -130,18 +138,8 @@ else()
     message(FATAL_ERROR "Unknown target processor: ${CMAKE_SYSTEM_PROCESSOR}.")
 endif()
 
-# platform detection
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(SYS_LINUX 1)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    set(SYS_WINDOWS 1)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(SYS_MACOSX 1)
-else()
-    message(FATAL_ERROR "Detected unknown target platform: " ${CMAKE_SYSTEM_NAME})
-endif()
-
-# compiler detection
+# compiler
+message("CMAKE_CXX_COMPILER_ID         : " ${CMAKE_C_COMPILER_ID})
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
     set(CLANG 1)
 endif()
@@ -149,7 +147,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
     set(GCC 1)
 endif()
 
-# Architecture-specific compiler flags
+# arch-specific flags
 include(ArchSpecificFlags)
 
 # NASM assembler for x86/x86_64
@@ -503,14 +501,14 @@ if(ENABLE_CLI)
 
     add_executable(x264cli)
     target_sources(x264cli PRIVATE ${X264_CLI_OBJECTS})
-    
+
     # Add Windows resource file for EXE (includes manifest)
     if(WIN32)
         if(MSVC OR MINGW)
             target_sources(x264cli PRIVATE win32/x264res.rc)
         endif()
     endif()
-    
+
     target_link_libraries(x264cli PRIVATE x264 x264_options)
     set_target_properties(x264cli PROPERTIES OUTPUT_NAME x264)
     target_include_directories(x264cli PRIVATE ${PROJECT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
