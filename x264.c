@@ -37,8 +37,13 @@
 #include <fcntl.h> /* _O_BINARY */
 #endif
 
-#include <signal.h>
+#ifdef _WIN32
+#include "extras/getopt.h"
+#else
 #include <getopt.h>
+#endif
+
+#include <signal.h>
 #include "x264cli.h"
 #include "input/input.h"
 #include "output/output.h"

@@ -11,7 +11,8 @@ endif()
 
 # Read and sanitize all input files
 set(SANITIZED_CONTENT "")
-foreach(INPUT_FILE ${INPUT_FILES})
+
+foreach(INPUT_FILE IN LISTS INPUT_FILES)
     if(NOT EXISTS "${INPUT_FILE}")
         message(FATAL_ERROR "Input file does not exist: ${INPUT_FILE}")
     endif()

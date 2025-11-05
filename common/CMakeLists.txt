@@ -49,7 +49,7 @@ if(ENABLE_OPENCL)
         OUTPUT ${OCLOBJ_H}
         COMMAND ${CMAKE_COMMAND}
             -DOUTPUT_FILE=${OCLOBJ_H}
-            -DINPUT_FILES="${OPENCL_SOURCES}"
+            "-DINPUT_FILES=${OPENCL_SOURCES}"
             -P ${CLTOSTR_CMAKE}
         DEPENDS ${OPENCL_SOURCES} ${CLTOSTR_CMAKE}
         COMMENT "Generating oclobj.h from OpenCL kernel sources"
@@ -112,6 +112,9 @@ if(HAVE_BITDEPTH8)
         target_compile_definitions(common_8 PRIVATE X264_API_EXPORTS)
     endif()
     target_link_libraries(common_8 PRIVATE x264_options)
+    if(ENABLE_OPENCL)
+        add_dependencies(common_8 GenOclobj)
+    endif()
     set(HAS_COMMON_8 TRUE PARENT_SCOPE)
 endif()
 

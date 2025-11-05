@@ -1,9 +1,9 @@
 #include "log.h"
 #include "cJSON.h"
+#include "osdep.h"
 #include <string.h>
-#include <pthread.h>
 
-static pthread_mutex_t MUTEX_LOG;
+static x264_pthread_mutex_t MUTEX_LOG;
 static FILE *FP = NULL;
 
 typedef struct {
@@ -93,11 +93,11 @@ int get_loglevel_idx(const char *level_string)
 
 void log_lock(bool lock, void *udata)
 {
-    pthread_mutex_t *LOCK = (pthread_mutex_t *)(udata);
+    x264_pthread_mutex_t *LOCK = (x264_pthread_mutex_t *)(udata);
     if (lock) {
-        pthread_mutex_lock(LOCK);
+        x264_pthread_mutex_lock(LOCK);
     } else {
-        pthread_mutex_unlock(LOCK);
+        x264_pthread_mutex_unlock(LOCK);
     }
 }
 
@@ -190,7 +190,7 @@ void log_init()
 
     load_json_config(&config);
 
-    pthread_mutex_init(&MUTEX_LOG, NULL);
+    x264_pthread_mutex_init(&MUTEX_LOG, NULL);
     log_set_lock(log_lock, &MUTEX_LOG);
 
     if (config.log2file) {
@@ -211,7 +211,7 @@ void log_destroy()
     if (FP != NULL) {
         fclose(FP);
     }
-    pthread_mutex_destroy(&MUTEX_LOG);
+    x264_pthread_mutex_destroy(&MUTEX_LOG);
 }
 
 void log_log(int level, const char *file, int line, const char *fmt, ...)
