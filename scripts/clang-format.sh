@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Change to project root directory (parent of scripts/)
+cd "$(dirname "$0")/.." || exit 1
+
 file_extensions=("h" "hpp" "c" "cc" "cpp")
 
 if ! command -v clang-format &> /dev/null; then

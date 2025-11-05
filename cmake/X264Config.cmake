@@ -373,7 +373,7 @@ set(X264_POINTVER "0.${X264_BUILD}.x")
 find_program(X264_SH_EXEC sh)
 if(X264_SH_EXEC)
     execute_process(
-        COMMAND ${X264_SH_EXEC} ${PROJECT_SOURCE_DIR}/version.sh
+        COMMAND ${X264_SH_EXEC} ${PROJECT_SOURCE_DIR}/scripts/version.sh
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         OUTPUT_VARIABLE X264_VERSION_OUTPUT
         RESULT_VARIABLE X264_VERSION_RESULT
@@ -395,7 +395,7 @@ if(X264_SH_EXEC)
             endif()
         endforeach()
     else()
-        message(STATUS "version.sh execution failed; using fallback version metadata")
+        message(STATUS "scripts/version.sh execution failed; using fallback version metadata")
     endif()
 else()
     message(STATUS "Posix shell not found; using fallback version metadata")

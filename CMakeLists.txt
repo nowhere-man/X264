@@ -374,8 +374,18 @@ endif()
 
 add_library(x264 ${X264_OBJECTS})
 if(WIN32 AND BUILD_SHARED_LIBS)
-    target_sources(x264 PRIVATE x264dll.c)
+    target_sources(x264 PRIVATE win32/x264dll.c)
 endif()
+
+# Add Windows resource file for DLL
+if(WIN32 AND BUILD_SHARED_LIBS)
+    if(MSVC OR MINGW)
+        target_sources(x264 PRIVATE win32/x264res.rc)
+        # Define DLL macro so manifest is not included in DLL
+        set_source_files_properties(win32/x264res.rc PROPERTIES COMPILE_DEFINITIONS "DLL")
+    endif()
+endif()
+
 set_target_properties(x264 PROPERTIES
     SOVERSION ${X264_BUILD}
 )
@@ -493,6 +503,14 @@ if(ENABLE_CLI)
 
     add_executable(x264cli)
     target_sources(x264cli PRIVATE ${X264_CLI_OBJECTS})
+    
+    # Add Windows resource file for EXE (includes manifest)
+    if(WIN32)
+        if(MSVC OR MINGW)
+            target_sources(x264cli PRIVATE win32/x264res.rc)
+        endif()
+    endif()
+    
     target_link_libraries(x264cli PRIVATE x264 x264_options)
     set_target_properties(x264cli PROPERTIES OUTPUT_NAME x264)
     target_include_directories(x264cli PRIVATE ${PROJECT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
@@ -539,7 +557,7 @@ if(BUILD_SHARED_LIBS)
     set(X264_PC_CFLAGS " -DX264_API_IMPORTS")
 endif()
 
-configure_file(${PROJECT_SOURCE_DIR}/cmake/x264.pc.in ${PROJECT_BINARY_DIR}/x264.pc @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/x264.pc.in ${PROJECT_BINARY_DIR}/x264.pc @ONLY)
 
 install(TARGETS x264
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}

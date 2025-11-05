@@ -1,6 +1,7 @@
 #!/bin/sh
 
-cd "$(dirname "$0")" >/dev/null && [ -f x264.h ] || exit 1
+# Change to project root directory (parent of scripts/)
+cd "$(dirname "$0")/.." >/dev/null && [ -f x264.h ] || exit 1
 
 api="$(grep '#define X264_BUILD' < x264.h | sed 's/^.* \([1-9][0-9]*\).*$/\1/')"
 ver="x"
