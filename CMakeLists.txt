@@ -188,7 +188,7 @@ set(X264_COMPILE_DEFINITIONS HAVE_CONFIG_H)
 # set compile options
 if(MSVC)
     list(APPEND X264_COMPILE_DEFINITIONS _CRT_SECURE_NO_WARNINGS HAVE_STRING_H)
-    x264_append_compile_options(/W3 /Ob2 /Oi /Ot /Oy /Gy /MP /fp:fast)
+    x264_append_compile_options(/utf-8 /W3 /Ob2 /Oi /Ot /Oy /Gy /MP /fp:fast)
 
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         list(APPEND X264_COMPILE_DEFINITIONS _DEBUG)

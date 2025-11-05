@@ -146,7 +146,7 @@ void x264_free(void *p)
 {
     if (p) {
 #if HAVE_MALLOC_H
-        free(p);
+        x264_free_aligned(p);
 #else
         free(*(((void **)p) - 1));
 #endif

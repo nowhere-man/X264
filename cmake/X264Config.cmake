@@ -301,7 +301,7 @@ if(WIN32 AND MSVC)
     #error \"error\"
     #endif
     ")
-    check_c_source_compiles(${CHECK_CODE} HAS_WINRT)
+    check_c_source_compiles("${CHECK_CODE}" HAS_WINRT)
     if(NOT HAS_WINRT)
         set(HAS_WINRT 0)
     endif()
